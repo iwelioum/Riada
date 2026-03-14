@@ -137,7 +137,7 @@
 
 ```bash
 # 1. Cloner le repository
-git clone https://github.com/weliou/Riada.git
+git clone https://github.com/iwelioum/Riada.git
 cd Riada
 
 # 2. Se connecter à MySQL en tant que root
@@ -146,11 +146,11 @@ mysql -u root -p
 # 3. Exécuter les scripts dans l'ordre
 mysql -u root -p < sql/01_Create_Database.sql
 mysql -u root -p < sql/02_Create_Tables.sql
-mysql -u root -p < sql/03_Indexes.sql
+mysql -u root -p < sql/03_Triggers.sql
 mysql -u root -p < sql/04_Procedures.sql
-mysql -u root -p < sql/05_Triggers.sql
-mysql -u root -p < sql/06_Security.sql
-mysql -u root -p < sql/07_Insert_All_Data.sql
+mysql -u root -p < sql/05_Insert_All_Data.sql
+mysql -u root -p < sql/06_Indexes.sql
+mysql -u root -p < sql/07_Security.sql
 
 # 4. Vérifier l'installation
 mysql -u root -p < sql/10_System_Check.sql
@@ -292,25 +292,17 @@ Riada/
 ├── README.md                    # Ce fichier
 ├── .gitignore                   # Fichiers à exclure
 ├── LICENSE                      # Licence du projet
-├── docs/
-│   ├── SCHEMA.md               # Schéma détaillé des tables
-│   ├── CHANGELOG.md            # Historique des versions
-│   └── API.md                  # Documentation des procédures
-├── sql/
-│   ├── 01_Create_Database.sql  # Création DB
-│   ├── 02_Create_Tables.sql    # Structure (19 tables)
-│   ├── 03_Indexes.sql          # Index + FK
-│   ├── 04_Procedures.sql       # Procédures stockées
-│   ├── 05_Triggers.sql         # Automatisations
-│   ├── 06_Security.sql         # Utilisateur sécurisé
-│   ├── 07_Insert_All_Data.sql  # Données de test
-│   ├── 08_Select_Queries.sql   # Exemples d'analyse
-│   ├── 09_Tests.sql            # Scénarios de test
-│   └── 10_System_Check.sql     # Audit automatisé
-└── scripts/
-    ├── install.sh              # Installation automatique
-    ├── backup.sh               # Sauvegarde automatisée
-    └── reset.sh                # Réinitialisation complète
+└── sql/
+    ├── 01_Create_Database.sql  # Création DB
+    ├── 02_Create_Tables.sql    # Structure (19 tables)
+    ├── 03_Triggers.sql         # Automatisations
+    ├── 04_Procedures.sql       # Procédures stockées
+    ├── 05_Insert_All_Data.sql  # Données de test
+    ├── 06_Indexes.sql          # Index + FK
+    ├── 07_Security.sql         # Utilisateur sécurisé
+    ├── 08_Select_Queries.sql   # Exemples d'analyse
+    ├── 09_Tests.sql            # Scénarios de test
+    └── 10_System_Check.sql     # Audit automatisé
 ```
 
 ## 🔄 Versioning
@@ -361,7 +353,7 @@ Ce projet est actuellement privé. Pour toute suggestion ou amélioration :
 
 Pour toute question ou problème :
 - 📧 Email : [Votre email]
-- 💬 GitHub Issues : [Créer une issue](https://github.com/weliou/Riada/issues)
+- 💬 GitHub Issues : [Créer une issue](https://github.com/iwelioum/Riada/issues)
 
 ## 📝 License
 
@@ -384,4 +376,4 @@ Technologies utilisées :
 
 **🏆 Système 100% Opérationnel - V5.0**
 
-*Dernière mise à jour : Novembre 2025*
+*Dernière mise à jour : Mars 2026*

@@ -1,214 +1,765 @@
--- -----------------------------------------------------
--- Script: 04_Procedures.sql (Version V5 - Optimisée DBA)
--- Objectif: Corriger la règle métier (10 min) et optimiser les lookups.
--- -----------------------------------------------------
 USE riada_db;
 
 DELIMITER $$
 
--- -----------------------------------------------------
--- PROCÉDURE 1: sp_CheckAccess (Membres)
--- -----------------------------------------------------
+
 DROP PROCEDURE IF EXISTS sp_CheckAccess$$
-
 CREATE PROCEDURE sp_CheckAccess(
-    IN p_membre_id INT UNSIGNED,
-    IN p_club_id INT UNSIGNED,
-    OUT p_decision ENUM('Accepté', 'Refusé')
+    IN  p_member_id  INT UNSIGNED,
+    IN  p_club_id    INT UNSIGNED,
+    OUT p_decision   VARCHAR(10)
 )
-main_logic: BEGIN
-    DECLARE v_contrat_id INT UNSIGNED;
-    DECLARE v_statut_contrat ENUM('Actif', 'Gelé', 'Expiré', 'Résilié');
-    DECLARE v_club_rattachement_id INT UNSIGNED;
-    DECLARE v_acces_limite BOOLEAN;
-    DECLARE v_membre_existe INT DEFAULT 0;
-    DECLARE v_club_existe INT DEFAULT 0;
-    DECLARE v_impayes_en_retard INT DEFAULT 0;
+NOT DETERMINISTIC
+SQL SECURITY DEFINER
+BEGIN
 
-    -- Décision par défaut
-    SET p_decision = 'Refusé';
-    
-    -- [CORRECTION #4] Vérifier que le club existe (évite violation FK au log)
-    -- Important pour que le INSERT final ne échoue jamais.
-    SELECT COUNT(*) INTO v_club_existe FROM clubs WHERE id = p_club_id;
-    IF v_club_existe = 0 THEN
-        -- Si le club n'existe pas, on ne peut pas logger (violation FK sur club_id).
-        -- On sort silencieusement. L'accès est 'Refusé' par défaut.
-        LEAVE main_logic; 
+    DECLARE v_contract_id    INT UNSIGNED  DEFAULT NULL;
+    DECLARE v_home_club_id   INT UNSIGNED  DEFAULT NULL;
+    DECLARE v_limited_access TINYINT(1)    DEFAULT 0;
+    DECLARE v_member_exists  INT UNSIGNED  DEFAULT 0;
+    DECLARE v_log_member_id  INT UNSIGNED  DEFAULT NULL;
+    DECLARE v_member_status  VARCHAR(20)   DEFAULT NULL;
+    DECLARE v_club_exists    INT UNSIGNED  DEFAULT 0;
+    DECLARE v_club_operational_status VARCHAR(30) DEFAULT NULL;
+    DECLARE v_overdue_count  INT UNSIGNED  DEFAULT 0;
+    DECLARE v_denial_reason  VARCHAR(255)  DEFAULT NULL;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        IF v_club_exists = 1 THEN
+            INSERT INTO access_log
+                (member_id, club_id, accessed_at, access_status, denial_reason)
+            VALUES
+                (v_log_member_id, p_club_id, NOW(3), 'denied', 'Internal system error');
+        END IF;
+        SET p_decision = 'denied';
+    END;
+
+    SET p_decision = 'denied';
+
+    access_checks: BEGIN
+
+        SELECT operational_status INTO v_club_operational_status
+        FROM   clubs
+        WHERE  id = p_club_id;
+
+        IF v_club_operational_status IS NULL THEN
+            SET v_denial_reason = 'Unknown club ID';
+            LEAVE access_checks;
+        END IF;
+
+        SET v_club_exists = 1;
+
+        IF v_club_operational_status <> 'open' THEN
+            SET v_denial_reason = 'Club is currently not open';
+            LEAVE access_checks;
+        END IF;
+
+        SELECT COUNT(*) INTO v_member_exists
+        FROM   members
+        WHERE  id = p_member_id;
+
+        IF v_member_exists = 0 THEN
+            SET v_denial_reason = 'Unknown member ID';
+            LEAVE access_checks;
+        END IF;
+
+        SET v_log_member_id = p_member_id;
+
+        SELECT status INTO v_member_status
+        FROM   members
+        WHERE  id = p_member_id;
+
+        IF v_member_status = 'anonymized' THEN
+            SET v_denial_reason = 'Member account is anonymized';
+            LEAVE access_checks;
+        END IF;
+
+        IF v_member_status = 'suspended' THEN
+            SET v_denial_reason = 'Member account is suspended';
+            LEAVE access_checks;
+        END IF;
+
+        SELECT ct.id, ct.home_club_id, sp.limited_club_access
+        INTO   v_contract_id, v_home_club_id, v_limited_access
+        FROM   contracts          ct
+        JOIN   subscription_plans sp ON sp.id = ct.plan_id
+        WHERE  ct.member_id = p_member_id
+          AND  ct.status    = 'active'
+          AND  (ct.end_date IS NULL OR ct.end_date >= CURDATE())
+        ORDER  BY ct.start_date DESC
+        LIMIT  1;
+
+        IF v_contract_id IS NULL THEN
+            SET v_denial_reason = 'No active contract';
+            LEAVE access_checks;
+        END IF;
+
+        IF v_limited_access = 1 AND v_home_club_id <> p_club_id THEN
+            SET v_denial_reason = 'Access restricted to home club (Basic plan)';
+            LEAVE access_checks;
+        END IF;
+
+        SELECT COUNT(*) INTO v_overdue_count
+        FROM   invoices
+        WHERE  contract_id = v_contract_id
+          AND  status      IN ('overdue', 'partially_paid')
+          AND  due_date    < CURDATE();
+
+        IF v_overdue_count > 0 THEN
+            SET v_denial_reason = 'Outstanding overdue invoice(s)';
+            LEAVE access_checks;
+        END IF;
+
+        SET p_decision      = 'granted';
+        SET v_denial_reason = NULL;
+
+    END access_checks;
+
+    IF v_club_exists = 1 THEN
+        INSERT INTO access_log
+            (member_id, club_id, accessed_at, access_status, denial_reason)
+        VALUES
+            (v_log_member_id, p_club_id, NOW(3), p_decision, v_denial_reason);
     END IF;
-    
-    -- Vérifie si le membre est connu de la base de données
-    SELECT COUNT(*) INTO v_membre_existe FROM membres WHERE id = p_membre_id;
-    
-    -- On ne vérifie la logique (contrat, paiement) que si le membre existe
-    IF v_membre_existe = 1 THEN
-    
-        -- Cherche le dernier contrat ACTIF du membre
-        SELECT 
-            c.id, 
-            c.statut, 
-            c.club_rattachement_id, 
-            a.acces_club_limite 
-        INTO 
-            v_contrat_id, v_statut_contrat, v_club_rattachement_id, v_acces_limite
-        FROM 
-            contrats_adhesion AS c
-        INNER JOIN 
-            abonnements AS a ON c.abonnement_id = a.id
-        WHERE 
-            c.membre_id = p_membre_id
-            AND c.statut = 'Actif'
-            AND (c.date_fin IS NULL OR c.date_fin >= CURDATE()) 
-        ORDER BY 
-            c.date_debut DESC
-        LIMIT 1;
 
-        -- Si un contrat actif est trouvé...
-        IF v_contrat_id IS NOT NULL THEN
-            -- VÉRIF 1: Accès limité à un autre club ?
-            IF v_acces_limite = TRUE AND v_club_rattachement_id != p_club_id THEN
-                SET p_decision = 'Refusé';
-            ELSE
-                -- VÉRIF 2: Y a-t-il des factures en retard ?
-                -- Cette requête est optimisée par l'index 'idx_facture_check_v2'
-                SELECT 
-                    COUNT(f.id) INTO v_impayes_en_retard
-                FROM 
-                    factures AS f
-                WHERE 
-                    f.contrat_id = v_contrat_id
-                    AND f.statut_facture IN ('Impayée', 'Partiellement payée')
-                    AND f.date_echeance < CURDATE(); 
-
-                IF v_impayes_en_retard > 0 THEN
-                    SET p_decision = 'Refusé'; -- Bloqué pour impayé
-                ELSE
-                    SET p_decision = 'Accepté'; -- OK
-                END IF;
-            END IF;
-        END IF; -- (Pas de contrat actif trouvé, p_decision reste 'Refusé')
-    END IF; -- (Membre n'existe pas, p_decision reste 'Refusé')
-
-    -- [CORRECTION #3] Log Toujours p_membre_id (même 999)
-    -- Ceci fonctionne car la FK sur membre_id (Table 11) a été supprimée (Script 02).
-    INSERT INTO journal_acces 
-        (membre_id, club_id, date_passage, statut_acces)
-    VALUES
-        (p_membre_id, p_club_id, NOW(), p_decision);
-        
-END main_logic$$
+END$$
 
 
--- -----------------------------------------------------
--- PROCÉDURE 2: sp_CheckAccessInvite (Pass Duo V3) - CORRIGÉE V5
--- -----------------------------------------------------
-DROP PROCEDURE IF EXISTS sp_CheckAccessInvite$$
-
-CREATE PROCEDURE sp_CheckAccessInvite(
-    IN p_invite_id INT UNSIGNED,
-    IN p_membre_accompagnateur_id INT UNSIGNED,
-    IN p_club_id INT UNSIGNED,
-    OUT p_decision ENUM('Autorisé', 'Refusé')
+DROP PROCEDURE IF EXISTS sp_CheckAccessGuest$$
+CREATE PROCEDURE sp_CheckAccessGuest(
+    IN  p_guest_id             INT UNSIGNED,
+    IN  p_companion_member_id  INT UNSIGNED,
+    IN  p_club_id              INT UNSIGNED,
+    OUT p_decision             VARCHAR(10)
 )
-main_invite_logic: BEGIN
-    DECLARE v_raison_refus VARCHAR(255) DEFAULT 'Raison inconnue';
-    DECLARE v_membre_a_pass_duo BOOLEAN DEFAULT FALSE;
-    DECLARE v_membre_journal_id INT UNSIGNED DEFAULT NULL;
-    DECLARE v_invite_statut ENUM('Actif', 'Banni');
-    DECLARE v_invite_age INT;
-    DECLARE v_club_existe INT DEFAULT 0;
-    DECLARE v_contrat_id_membre INT UNSIGNED; 
-    DECLARE v_impayes_en_retard INT DEFAULT 0;
+NOT DETERMINISTIC
+SQL SECURITY DEFINER
+BEGIN
 
-    -- Décision par défaut
-    SET p_decision = 'Refusé';
+    DECLARE v_denial_reason         VARCHAR(255)       DEFAULT 'Unknown reason';
+    DECLARE v_guest_status          ENUM('active','banned') DEFAULT NULL;
+    DECLARE v_guest_age             INT                DEFAULT 0;
+    DECLARE v_guest_exists          INT UNSIGNED       DEFAULT 0;
+    DECLARE v_club_exists           INT UNSIGNED       DEFAULT 0;
+    DECLARE v_club_operational_status VARCHAR(30)      DEFAULT NULL;
+    DECLARE v_guest_sponsor_member_id INT UNSIGNED     DEFAULT NULL;
+    DECLARE v_companion_member_status VARCHAR(20)      DEFAULT NULL;
+    DECLARE v_companion_contract_id INT UNSIGNED       DEFAULT NULL;
+    DECLARE v_companion_home_club_id INT UNSIGNED      DEFAULT NULL;
+    DECLARE v_companion_limited_access TINYINT(1)      DEFAULT 0;
+    DECLARE v_duo_pass_allowed      TINYINT(1)         DEFAULT 0;
+    DECLARE v_overdue_count         INT UNSIGNED       DEFAULT 0;
+    DECLARE v_companion_access_id   BIGINT UNSIGNED    DEFAULT NULL;
 
-    -- [CORRECTION #4] Vérifier que le club existe (évite violation FK au log)
-    SELECT COUNT(*) INTO v_club_existe FROM clubs WHERE id = p_club_id;
-    IF v_club_existe = 0 THEN
-        SET v_raison_refus = 'Club ID inconnu';
-        LEAVE main_invite_logic; -- Sortie. Le log final gérera.
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        IF EXISTS (SELECT 1 FROM guests WHERE id = p_guest_id)
+           AND EXISTS (SELECT 1 FROM clubs WHERE id = p_club_id) THEN
+            INSERT INTO guest_access_log
+                (guest_id, companion_member_id, club_id,
+                 accessed_at, access_status, denial_reason)
+            VALUES
+                (
+                    p_guest_id,
+                    IF(EXISTS (SELECT 1 FROM members WHERE id = p_companion_member_id), p_companion_member_id, NULL),
+                    p_club_id,
+                    NOW(3),
+                    'denied',
+                    'Internal system error'
+                );
+        END IF;
+        SET p_decision = 'denied';
+    END;
+
+    SET p_decision = 'denied';
+
+    guest_checks: BEGIN
+
+        SELECT operational_status INTO v_club_operational_status
+        FROM   clubs
+        WHERE  id = p_club_id;
+
+        IF v_club_operational_status IS NULL THEN
+            SET v_denial_reason = 'Unknown club ID';
+            LEAVE guest_checks;
+        END IF;
+
+        SET v_club_exists = 1;
+
+        IF v_club_operational_status <> 'open' THEN
+            SET v_denial_reason = 'Club is currently not open';
+            LEAVE guest_checks;
+        END IF;
+
+        SELECT COUNT(*) INTO v_guest_exists
+        FROM   guests
+        WHERE  id = p_guest_id;
+
+        IF v_guest_exists = 0 THEN
+            SET v_denial_reason = 'Guest not registered';
+            LEAVE guest_checks;
+        END IF;
+
+        SELECT status, TIMESTAMPDIFF(YEAR, date_of_birth, CURDATE()), sponsor_member_id
+        INTO   v_guest_status, v_guest_age, v_guest_sponsor_member_id
+        FROM   guests
+        WHERE  id = p_guest_id;
+
+        IF v_guest_status = 'banned' THEN
+            SET v_denial_reason = 'Guest is banned';
+            LEAVE guest_checks;
+        END IF;
+
+        IF v_guest_age < 16 THEN
+            SET v_denial_reason = 'Guest is under minimum age (16 years)';
+            LEAVE guest_checks;
+        END IF;
+
+        IF v_guest_sponsor_member_id IS NULL THEN
+            SET v_denial_reason = 'Guest has no registered sponsor';
+            LEAVE guest_checks;
+        END IF;
+
+        IF v_guest_sponsor_member_id <> p_companion_member_id THEN
+            SET v_denial_reason = 'Companion member is not the registered sponsor';
+            LEAVE guest_checks;
+        END IF;
+
+        SELECT status INTO v_companion_member_status
+        FROM   members
+        WHERE  id = p_companion_member_id;
+
+        IF v_companion_member_status IS NULL THEN
+            SET v_denial_reason = 'Companion member not found';
+            LEAVE guest_checks;
+        END IF;
+
+        IF v_companion_member_status <> 'active' THEN
+            SET v_denial_reason = 'Companion member account is not active';
+            LEAVE guest_checks;
+        END IF;
+
+        SELECT ct.id, sp.duo_pass_allowed, ct.home_club_id, sp.limited_club_access
+        INTO   v_companion_contract_id, v_duo_pass_allowed, v_companion_home_club_id, v_companion_limited_access
+        FROM   contracts          ct
+        JOIN   subscription_plans sp ON sp.id = ct.plan_id
+        WHERE  ct.member_id = p_companion_member_id
+          AND  ct.status    = 'active'
+          AND  (ct.end_date IS NULL OR ct.end_date >= CURDATE())
+        ORDER  BY ct.start_date DESC
+        LIMIT  1;
+
+        IF v_duo_pass_allowed IS NULL OR v_duo_pass_allowed = 0 THEN
+            SET v_denial_reason = 'Companion member does not have an active Duo Pass';
+            LEAVE guest_checks;
+        END IF;
+
+        IF v_companion_limited_access = 1 AND v_companion_home_club_id <> p_club_id THEN
+            SET v_denial_reason = 'Companion member cannot access this club with current plan';
+            LEAVE guest_checks;
+        END IF;
+
+        SELECT COUNT(*) INTO v_overdue_count
+        FROM   invoices
+        WHERE  contract_id = v_companion_contract_id
+          AND  status      IN ('overdue', 'partially_paid')
+          AND  due_date    < CURDATE();
+
+        IF v_overdue_count > 0 THEN
+            SET v_denial_reason = 'Companion member has overdue invoice(s)';
+            LEAVE guest_checks;
+        END IF;
+
+        SELECT id INTO v_companion_access_id
+        FROM   access_log
+        WHERE  member_id      = p_companion_member_id
+          AND  club_id        = p_club_id
+          AND  access_status  = 'granted'
+          AND  accessed_at   >= NOW(3) - INTERVAL 30 MINUTE
+        ORDER  BY accessed_at DESC
+        LIMIT  1;
+
+        IF v_companion_access_id IS NULL THEN
+            SET v_denial_reason = 'Companion member not present (must have scanned within 30 minutes)';
+            LEAVE guest_checks;
+        END IF;
+
+        SET p_decision      = 'granted';
+        SET v_denial_reason = NULL;
+
+    END guest_checks;
+
+    IF v_guest_exists = 1 AND v_club_exists = 1 THEN
+        INSERT INTO guest_access_log
+            (guest_id, companion_member_id, club_id,
+             accessed_at, access_status, denial_reason)
+        VALUES
+            (
+                p_guest_id,
+                IF(EXISTS (SELECT 1 FROM members WHERE id = p_companion_member_id), p_companion_member_id, NULL),
+                p_club_id,
+                NOW(3),
+                p_decision,
+                v_denial_reason
+            );
     END IF;
 
-    -- VÉRIFICATION 1 (Invité Existe/Banni)
-    SELECT statut, TIMESTAMPDIFF(YEAR, date_naissance, CURDATE())
-    INTO v_invite_statut, v_invite_age
-    FROM invites
-    WHERE id = p_invite_id;
-    
-    IF v_invite_statut IS NULL THEN
-        SET v_raison_refus = 'Invité non enregistré';
-        LEAVE main_invite_logic;
-    END IF;
-    IF v_invite_statut = 'Banni' THEN
-        SET v_raison_refus = 'Invité banni';
-        LEAVE main_invite_logic;
+END$$
+
+
+DROP PROCEDURE IF EXISTS sp_GenerateMonthlyInvoice$$
+CREATE PROCEDURE sp_GenerateMonthlyInvoice(
+    IN  p_contract_id  INT UNSIGNED,
+    OUT p_result       VARCHAR(100)
+)
+NOT DETERMINISTIC
+SQL SECURITY DEFINER
+proc_label: BEGIN
+
+    DECLARE v_plan_id         INT UNSIGNED  DEFAULT NULL;
+    DECLARE v_base_price      DECIMAL(10,2) DEFAULT NULL;
+    DECLARE v_plan_name       VARCHAR(100)  DEFAULT NULL;
+    DECLARE v_options_total   DECIMAL(10,2) DEFAULT 0.00;
+    DECLARE v_amount_excl_tax DECIMAL(10,2) DEFAULT NULL;
+    DECLARE v_period_start    DATE          DEFAULT NULL;
+    DECLARE v_period_end      DATE          DEFAULT NULL;
+    DECLARE v_invoice_exists  INT UNSIGNED  DEFAULT 0;
+    DECLARE v_invoice_id      INT UNSIGNED  DEFAULT NULL;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    IF p_contract_id IS NULL OR p_contract_id = 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = '[SP][sp_GenerateMonthlyInvoice] Invalid input: p_contract_id must be > 0';
     END IF;
 
-    -- VÉRIFICATION 2 (Âge)
-    IF v_invite_age < 16 THEN
-        SET v_raison_refus = 'Invité mineur non autorisé (minimum 16 ans)';
-        LEAVE main_invite_logic;
+    SET v_period_start = DATE_FORMAT(CURDATE(), '%Y-%m-01');
+    SET v_period_end   = LAST_DAY(CURDATE());
+
+    START TRANSACTION;
+
+        SELECT ct.plan_id, sp.base_price, sp.plan_name
+        INTO   v_plan_id, v_base_price, v_plan_name
+        FROM   contracts          ct
+        JOIN   members            m  ON m.id  = ct.member_id
+        JOIN   subscription_plans sp ON sp.id = ct.plan_id
+        WHERE  ct.id     = p_contract_id
+          AND  ct.status = 'active'
+          AND  m.status  = 'active'
+          AND  (ct.end_date IS NULL OR ct.end_date >= CURDATE())
+        FOR UPDATE;
+
+        IF v_plan_id IS NULL THEN
+            ROLLBACK;
+            SET p_result = 'ERROR: contract not found or not active';
+            LEAVE proc_label;
+        END IF;
+
+        SELECT COUNT(*) INTO v_invoice_exists
+        FROM   invoices
+        WHERE  contract_id          = p_contract_id
+          AND  billing_period_start = v_period_start
+          AND  status               <> 'cancelled';
+
+        IF v_invoice_exists > 0 THEN
+            ROLLBACK;
+            SET p_result = 'SKIP: invoice already generated for this billing period';
+            LEAVE proc_label;
+        END IF;
+
+        SELECT COALESCE(SUM(so.monthly_price), 0.00) INTO v_options_total
+        FROM   contract_options co
+        JOIN   service_options  so ON so.id = co.option_id
+        WHERE  co.contract_id = p_contract_id
+          AND  co.added_on   <= v_period_end
+          AND  (co.removed_on IS NULL OR co.removed_on >= v_period_start);
+
+        SET v_amount_excl_tax = v_base_price + v_options_total;
+
+        INSERT INTO invoices
+            (contract_id, invoice_number, issued_on, due_date,
+             billing_period_start, billing_period_end,
+             amount_excl_tax, status)
+        VALUES
+            (p_contract_id, '', CURDATE(),
+             DATE_ADD(CURDATE(), INTERVAL 15 DAY),
+             v_period_start, v_period_end,
+             v_amount_excl_tax, 'issued');
+
+        SET v_invoice_id = LAST_INSERT_ID();
+
+        INSERT INTO invoice_lines
+            (invoice_id, description, line_type, plan_id, quantity, unit_price_excl_tax)
+        VALUES
+            (v_invoice_id,
+             CONCAT('Monthly subscription - ', v_plan_name),
+             'subscription', v_plan_id, 1, v_base_price);
+
+        INSERT INTO invoice_lines
+            (invoice_id, description, line_type, option_id, quantity, unit_price_excl_tax)
+        SELECT
+            v_invoice_id,
+            CONCAT('Option: ', so.option_name),
+            'option',
+            so.id,
+            1,
+            so.monthly_price
+        FROM   contract_options co
+        JOIN   service_options  so ON so.id = co.option_id
+        WHERE  co.contract_id = p_contract_id
+          AND  co.added_on   <= v_period_end
+          AND  (co.removed_on IS NULL OR co.removed_on >= v_period_start);
+
+    COMMIT;
+
+    SET p_result = CONCAT('OK: invoice generated - id=', v_invoice_id,
+                           ', amount_excl_tax=', v_amount_excl_tax, ' EUR');
+
+END proc_label$$
+
+
+DROP PROCEDURE IF EXISTS sp_FreezeContract$$
+CREATE PROCEDURE sp_FreezeContract(
+    IN  p_contract_id    INT UNSIGNED,
+    IN  p_duration_days  INT UNSIGNED,
+    OUT p_result         VARCHAR(100)
+)
+NOT DETERMINISTIC
+SQL SECURITY DEFINER
+proc_label: BEGIN
+
+    DECLARE v_status        VARCHAR(20) DEFAULT NULL;
+    DECLARE v_end_date      DATE        DEFAULT NULL;
+    DECLARE v_contract_type VARCHAR(30) DEFAULT NULL;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    IF p_contract_id IS NULL OR p_contract_id = 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = '[SP][sp_FreezeContract] Invalid input: p_contract_id must be > 0';
     END IF;
 
-    -- VÉRIFICATION 3 (Pass Duo + récupération contrat_id)
-    SELECT ca.id, a.acces_duo_permis
-    INTO v_contrat_id_membre, v_membre_a_pass_duo
-    FROM contrats_adhesion ca
-    INNER JOIN abonnements a ON ca.abonnement_id = a.id
-    WHERE ca.membre_id = p_membre_accompagnateur_id
-      AND ca.statut = 'Actif'
-      AND (ca.date_fin IS NULL OR ca.date_fin >= CURDATE())
-    ORDER BY ca.date_debut DESC 
-    LIMIT 1;
-    
-    IF NOT v_membre_a_pass_duo THEN
-        SET v_raison_refus = 'Le membre n''a pas l''option Pass Duo active'; 
-        LEAVE main_invite_logic;
+    IF p_duration_days IS NULL OR p_duration_days = 0 OR p_duration_days > 365 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = '[SP][sp_FreezeContract] Invalid input: p_duration_days must be between 1 and 365';
     END IF;
 
-    -- [CORRECTION #1] VÉRIFICATION 4: Le membre a-t-il des IMPAYÉS ?
-    -- Optimisé par 'idx_facture_check_v2'
-    SELECT COUNT(f.id) INTO v_impayes_en_retard
-    FROM factures AS f
-    WHERE f.contrat_id = v_contrat_id_membre -- On utilise le contrat du membre
-      AND f.statut_facture IN ('Impayée', 'Partiellement payée')
-      AND f.date_echeance < CURDATE();
+    START TRANSACTION;
 
-    IF v_impayes_en_retard > 0 THEN
-        SET v_raison_refus = 'Membre accompagnateur en impayé (accès invité refusé)';
-        LEAVE main_invite_logic;
+        SELECT status, end_date, contract_type
+        INTO   v_status, v_end_date, v_contract_type
+        FROM   contracts
+        WHERE  id = p_contract_id
+        FOR UPDATE;
+
+        IF v_status IS NULL THEN
+            ROLLBACK;
+            SET p_result = 'ERROR: contract not found';
+            LEAVE proc_label;
+        END IF;
+
+        IF v_status <> 'active' THEN
+            ROLLBACK;
+            SET p_result = CONCAT('ERROR: contract is not active (current status: ', v_status, ')');
+            LEAVE proc_label;
+        END IF;
+
+        UPDATE contracts
+        SET
+            status            = 'suspended',
+            freeze_start_date = CURDATE(),
+            freeze_end_date   = DATE_ADD(CURDATE(), INTERVAL p_duration_days DAY),
+            end_date          = CASE
+                                    WHEN v_contract_type = 'fixed_term'
+                                         AND v_end_date IS NOT NULL
+                                    THEN DATE_ADD(v_end_date, INTERVAL p_duration_days DAY)
+                                    ELSE v_end_date
+                                END
+        WHERE  id = p_contract_id;
+
+    COMMIT;
+
+    SET p_result = CONCAT(
+        'OK: contract ', p_contract_id,
+        ' suspended for ', p_duration_days, ' days',
+        ' until ', DATE_ADD(CURDATE(), INTERVAL p_duration_days DAY)
+    );
+
+END proc_label$$
+
+
+DROP PROCEDURE IF EXISTS sp_RenewContract$$
+CREATE PROCEDURE sp_RenewContract(
+    IN  p_contract_id  INT UNSIGNED,
+    OUT p_result       VARCHAR(100)
+)
+NOT DETERMINISTIC
+SQL SECURITY DEFINER
+proc_label: BEGIN
+
+    DECLARE v_member_id         INT UNSIGNED  DEFAULT NULL;
+    DECLARE v_plan_id           INT UNSIGNED  DEFAULT NULL;
+    DECLARE v_home_club_id      INT UNSIGNED  DEFAULT NULL;
+    DECLARE v_end_date          DATE          DEFAULT NULL;
+    DECLARE v_contract_type     VARCHAR(30)   DEFAULT NULL;
+    DECLARE v_status            VARCHAR(20)   DEFAULT NULL;
+    DECLARE v_commitment_months INT UNSIGNED  DEFAULT NULL;
+    DECLARE v_new_contract_id   INT UNSIGNED  DEFAULT NULL;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    IF p_contract_id IS NULL OR p_contract_id = 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = '[SP][sp_RenewContract] Invalid input: p_contract_id must be > 0';
     END IF;
-    
-    -- [CORRECTION LOGIQUE V5] VÉRIFICATION 5 (Présence)
-    -- Règle métier assouplie de 10 à 30 minutes (cf. note V4)
-    -- Optimisé par 'idx_journal_invite_check'
-    SELECT id INTO v_membre_journal_id
-    FROM journal_acces
-    WHERE membre_id = p_membre_accompagnateur_id
-      AND club_id = p_club_id
-      AND statut_acces = 'Accepté'
-      -- Règle métier: Doit avoir scanné il y a moins de 30 mins
-      AND date_passage >= NOW() - INTERVAL 30 MINUTE 
-    ORDER BY date_passage DESC
-    LIMIT 1;
-    
-    IF v_membre_journal_id IS NULL THEN
-        SET v_raison_refus = 'Membre accompagnateur absent (Scan < 30 min requis)';
-        LEAVE main_invite_logic;
+
+    START TRANSACTION;
+
+        SELECT member_id, plan_id, home_club_id, end_date, contract_type, status
+        INTO   v_member_id, v_plan_id, v_home_club_id, v_end_date, v_contract_type, v_status
+        FROM   contracts
+        WHERE  id = p_contract_id
+        FOR UPDATE;
+
+        IF v_member_id IS NULL THEN
+            ROLLBACK;
+            SET p_result = 'ERROR: contract not found';
+            LEAVE proc_label;
+        END IF;
+
+        IF v_contract_type = 'open_ended' THEN
+            ROLLBACK;
+            SET p_result = 'ERROR: open-ended contracts cannot be renewed';
+            LEAVE proc_label;
+        END IF;
+
+        IF v_status NOT IN ('active', 'expired') THEN
+            ROLLBACK;
+            SET p_result = CONCAT('ERROR: incompatible contract status (', v_status, ')');
+            LEAVE proc_label;
+        END IF;
+
+        SELECT commitment_months INTO v_commitment_months
+        FROM   subscription_plans
+        WHERE  id = v_plan_id;
+
+        UPDATE contracts
+        SET    status = 'expired'
+        WHERE  id = p_contract_id;
+
+        INSERT INTO contracts
+            (member_id, plan_id, home_club_id,
+             start_date, end_date, contract_type, status)
+        VALUES
+            (v_member_id, v_plan_id, v_home_club_id,
+             DATE_ADD(COALESCE(v_end_date, CURDATE()), INTERVAL 1 DAY),
+             DATE_ADD(
+                 DATE_ADD(COALESCE(v_end_date, CURDATE()), INTERVAL 1 DAY),
+                 INTERVAL v_commitment_months MONTH
+             ),
+             'fixed_term', 'active');
+
+        SET v_new_contract_id = LAST_INSERT_ID();
+
+        INSERT INTO contract_options (contract_id, option_id, added_on)
+        SELECT v_new_contract_id, option_id, CURDATE()
+        FROM   contract_options
+        WHERE  contract_id = p_contract_id
+          AND  removed_on  IS NULL;
+
+    COMMIT;
+
+    SET p_result = CONCAT(
+        'OK: new contract id=', v_new_contract_id,
+        ' created from contract ', p_contract_id
+    );
+
+END proc_label$$
+
+
+DROP PROCEDURE IF EXISTS sp_ExpireElapsedContracts$$
+CREATE PROCEDURE sp_ExpireElapsedContracts(
+    OUT p_count INT
+)
+NOT DETERMINISTIC
+SQL SECURITY DEFINER
+BEGIN
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        SET p_count = -1;
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+        UPDATE contracts
+        SET    status = 'expired'
+        WHERE  status   IN ('active', 'suspended')
+          AND  end_date IS NOT NULL
+          AND  end_date  < CURDATE();
+
+        SET p_count = ROW_COUNT();
+
+    COMMIT;
+
+END$$
+
+
+DROP PROCEDURE IF EXISTS sp_AnonymizeMember$$
+CREATE PROCEDURE sp_AnonymizeMember(
+    IN  p_member_id    INT UNSIGNED,
+    IN  p_requested_by VARCHAR(100),
+    OUT p_result       VARCHAR(100)
+)
+NOT DETERMINISTIC
+SQL SECURITY DEFINER
+proc_label: BEGIN
+
+    DECLARE v_current_status VARCHAR(20) DEFAULT NULL;
+    DECLARE v_birth_year     YEAR        DEFAULT NULL;
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    IF p_member_id IS NULL OR p_member_id = 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = '[SP][sp_AnonymizeMember] Invalid input: p_member_id must be > 0';
     END IF;
-    
-    -- SUCCÈS
-    SET p_decision = 'Autorisé';
-    SET v_raison_refus = NULL;
-    
-    -- [OPTIMISATION V5] L'INSERT est mutualisé ici.
-    -- Un seul INSERT est exécuté à la fin de la procédure.
-    INSERT INTO journal_acces_invites 
-        (invite_id, membre_accompagnateur_id, club_id, date_passage, statut_acces, raison_refus)
-    VALUES 
-        (p_invite_id, p_membre_accompagnateur_id, p_club_id, NOW(), p_decision, v_raison_refus);
-        
-END main_invite_logic$$
+
+    IF p_requested_by IS NULL OR TRIM(p_requested_by) = '' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = '[SP][sp_AnonymizeMember] Invalid input: p_requested_by must not be empty';
+    END IF;
+
+    START TRANSACTION;
+
+        SELECT status, YEAR(date_of_birth)
+        INTO   v_current_status, v_birth_year
+        FROM   members
+        WHERE  id = p_member_id
+        FOR UPDATE;
+
+        IF v_current_status IS NULL THEN
+            ROLLBACK;
+            SET p_result = 'ERROR: member not found';
+            LEAVE proc_label;
+        END IF;
+
+        IF v_current_status = 'anonymized' THEN
+            ROLLBACK;
+            SET p_result = 'ERROR: member is already anonymized';
+            LEAVE proc_label;
+        END IF;
+
+        UPDATE contracts
+        SET    status               = 'cancelled',
+               cancelled_on        = CURDATE(),
+               cancellation_reason = 'GDPR right-to-erasure'
+        WHERE  member_id = p_member_id
+          AND  status    NOT IN ('expired', 'cancelled');
+
+        UPDATE bookings
+        SET    status = 'cancelled'
+        WHERE  member_id = p_member_id
+          AND  status    = 'confirmed';
+
+        UPDATE members
+        SET
+            last_name                    = 'ANONYMIZED',
+            first_name                   = 'ANONYMIZED',
+            email                        = CONCAT('anon_', p_member_id, '@deleted.invalid'),
+            mobile_phone                 = NULL,
+            address_street               = NULL,
+            address_city                 = NULL,
+            address_postal_code          = NULL,
+            date_of_birth                = MAKEDATE(v_birth_year, 1),
+            gender                       = 'unspecified',
+            nationality                  = 'ANONYMIZED',
+            primary_goal                 = NULL,
+            acquisition_source           = NULL,
+            referral_member_id           = NULL,
+            medical_certificate_provided = 0,
+            marketing_consent            = 0,
+            gdpr_consent_at              = gdpr_consent_at,
+            last_visit_date              = NULL,
+            status                       = 'anonymized'
+        WHERE  id = p_member_id;
+
+        UPDATE guests
+        SET
+            last_name     = CONCAT('ANON-GUEST-', id),
+            first_name    = 'ANONYMIZED',
+            email         = NULL,
+            date_of_birth = MAKEDATE(YEAR(date_of_birth), 1),
+            status        = 'banned'
+        WHERE  sponsor_member_id = p_member_id;
+
+        INSERT INTO audit_gdpr (member_id, anonymized_at, requested_by)
+        VALUES (p_member_id, NOW(3), p_requested_by);
+
+    COMMIT;
+
+    SET p_result = CONCAT('OK: member ', p_member_id, ' anonymized (GDPR right-to-erasure)');
+
+END proc_label$$
+
+
+DROP PROCEDURE IF EXISTS sp_ExpireElapsedInvoices$$
+CREATE PROCEDURE sp_ExpireElapsedInvoices(
+    OUT p_count INT
+)
+NOT DETERMINISTIC
+SQL SECURITY DEFINER
+BEGIN
+
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        SET p_count = -1;
+        ROLLBACK;
+        RESIGNAL;
+    END;
+
+    START TRANSACTION;
+
+        UPDATE invoices
+        SET    status = 'overdue'
+        WHERE  status   IN ('issued', 'partially_paid')
+          AND  due_date  < CURDATE();
+
+        SET p_count = ROW_COUNT();
+
+    COMMIT;
+
+END$$
+
 
 DELIMITER ;
+
+
+SELECT
+    ROUTINE_NAME     AS `Procedure`,
+    SECURITY_TYPE    AS `Security`,
+    IS_DETERMINISTIC AS `Deterministic`,
+    CREATED          AS `Created`
+FROM   information_schema.ROUTINES
+WHERE  ROUTINE_SCHEMA = DATABASE()
+  AND  ROUTINE_TYPE   = 'PROCEDURE'
+ORDER  BY ROUTINE_NAME;
