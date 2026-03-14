@@ -1,12 +1,28 @@
-# 🏋️ Riada - Système de Gestion de Salles de Sport
+# 🏋️ Riada - Système de Gestion de Salles de Sport (API ASP.NET Core 8)
 
+![ASP.NET Core](https://img.shields.io/badge/ASP.NET%20Core-8.0-blueviolet.svg)
 ![MySQL](https://img.shields.io/badge/MySQL-8.0+-blue.svg)
-![Version](https://img.shields.io/badge/Version-5.0-green.svg)
-![License](https://img.shields.io/badge/License-Private-red.svg)
+![Clean Architecture](https://img.shields.io/badge/Architecture-Clean-green.svg)
+![EF Core](https://img.shields.io/badge/EF%20Core-Pomelo-orange.svg)
+![Status](https://img.shields.io/badge/Status-Build%20Passing-brightgreen.svg)
 
 ## 📋 Description
 
 **Riada** est une base de données MySQL complète et optimisée pour la gestion d'un réseau de salles de sport. Elle gère l'ensemble des opérations : membres, abonnements, facturation, contrôle d'accès, cours collectifs, maintenance des équipements et système de Pass Duo.
+
+### 🚀 Statut de Développement (Phases Complétées)
+
+| Phase | Status | Description |
+|-------|--------|-------------|
+| **Phase 1** | ✅ COMPLÉTÉE | Build propre (0 erreurs) - `dotnet build` réussi |
+| **Phase 2** | ✅ COMPLÉTÉE | 12 UseCases implémentés (Members, Contracts, Billing, Courses, Equipment, Guests, Analytics) |
+| **Phase 3** | ✅ COMPLÉTÉE | DI complète - Tous les UseCases et repositories enregistrés |
+| **Phase 4** | 🔄 EN COURS | Controllers et endpoints manquants à compléter |
+| **Phase 5** | ⏳ À FAIRE | Validation complète et GlobalExceptionHandler |
+| **Phase 6** | ⏳ À FAIRE | Tests unitaires et d'intégration |
+| **Phase 7** | ⏳ À FAIRE | Polish (Swagger, Logging, CORS, Health Check) |
+
+**Dernière mise à jour** : Phase 3 complétée - Tous les UseCases et repositories enregistrés en DI
 
 ## 🎯 Fonctionnalités Principales
 
@@ -126,14 +142,87 @@
 - Permissions EXECUTE uniquement sur les procédures
 - Conformité RGPD (consentement, marketing)
 
+## 🏗️ Architecture C# (Clean Architecture)
+
+### Structure du Projet
+
+```
+src/
+├── Riada.Domain/              # Entités, Enums, Interfaces (0 dépendance)
+│   ├── Entities/              # 21 tables mappées
+│   ├── Enums/                 # 20+ énumérations
+│   └── Interfaces/            # Contrats (Repositories, Services)
+│
+├── Riada.Application/         # UseCases, DTOs, Validators
+│   ├── UseCases/              # 12+ UseCases (Members, Contracts, Billing, etc.)
+│   ├── DTOs/                  # Requests et Responses
+│   └── Validators/            # FluentValidation
+│
+├── Riada.Infrastructure/      # EF Core, Repositories, Services
+│   ├── Persistence/           # RiadaDbContext, Configurations EF
+│   ├── Repositories/          # 8 repositories + GenericRepository
+│   └── Services/              # Services Dapper (StoredProcedures)
+│
+└── Riada.API/                 # Controllers, Middleware, Program.cs
+    ├── Controllers/           # 9 endpoints
+    └── Middleware/            # GlobalExceptionHandler
+```
+
+### UseCases Implémentés (Phase 2-3)
+
+**Members** (2)
+- ✅ CreateMemberUseCase - Créer un nouveau membre
+- ✅ UpdateMemberUseCase - Mettre à jour les informations
+
+**Contracts** (1)
+- ✅ CreateContractUseCase - Créer un contrat d'adhésion
+- ✅ RenewContractUseCase - Renouveler un contrat
+- ✅ FreezeContractUseCase - Geler un contrat
+
+**Billing** (1)
+- ✅ RecordPaymentUseCase - Enregistrer un paiement
+- ✅ GenerateMonthlyInvoiceUseCase - Générer factures mensuelles
+
+**Courses** (1)
+- ✅ BookSessionUseCase - Réserver une session
+- ✅ CancelBookingUseCase - Annuler une réservation
+
+**Equipment** (3)
+- ✅ ListEquipmentUseCase - Lister les équipements
+- ✅ CreateMaintenanceTicketUseCase - Créer un ticket
+- ✅ UpdateTicketStatusUseCase - Mettre à jour le statut
+
+**Guests** (1)
+- ✅ BanGuestUseCase - Bannir un invité
+
+**Analytics** (3)
+- ✅ GetClubFrequencyReportUseCase - Fréquentation par club
+- ✅ GetOptionPopularityUseCase - Options populaires
+- ✅ RunSystemHealthCheckUseCase - Santé du système
+
+### Stack Technique
+
+| Composant | Technologie |
+|-----------|------------|
+| Framework | ASP.NET Core 8.0 |
+| Database | MySQL 8.0 + Pomelo EF Core |
+| ORM | Entity Framework Core + Dapper |
+| Validation | FluentValidation |
+| Auth | JWT Bearer |
+| Documentation | Swagger/OpenAPI |
+| Testing | xUnit, Moq, Testcontainers.MySql |
+
 ## 🚀 Installation
 
-### Prérequis
+### Prérequis Globaux
 - MySQL 8.0+ (requis pour CTE, WINDOW functions)
+- .NET 8.0 SDK (pour l'API C#)
 - Accès root pour la création initiale
 - Client MySQL (CLI, Workbench, etc.)
 
-### Installation Complète
+### Configuration MySQL
+
+#### 1. Installation Complète
 
 ```bash
 # 1. Cloner le repository
@@ -156,12 +245,106 @@ mysql -u root -p < sql/07_Security.sql
 mysql -u root -p < sql/10_System_Check.sql
 ```
 
-### Installation Rapide (Script Unique)
+#### 2. Installation Rapide (Script Unique)
 
 ```bash
 # Exécuter tous les scripts en une commande
 cat sql/01_*.sql sql/02_*.sql sql/03_*.sql sql/04_*.sql sql/05_*.sql sql/06_*.sql sql/07_*.sql | mysql -u root -p
 ```
+
+### Configuration API C#
+
+#### 1. Configuration de la Chaîne de Connexion
+
+Éditer `src/Riada.API/appsettings.Development.json` :
+
+```json
+{
+  "ConnectionStrings": {
+    "RiadaDb": "Server=localhost;Port=3306;Database=riada_db;User=root;Password=votre_mot_de_passe;"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.EntityFrameworkCore": "Warning"
+    }
+  }
+}
+```
+
+#### 2. Compilation et Démarrage
+
+```bash
+# Installer les dépendances NuGet
+dotnet restore
+
+# Compiler le projet
+dotnet build
+
+# Démarrer l'API (port 5275 par défaut)
+cd src/Riada.API
+dotnet run
+
+# L'API sera disponible à : https://localhost:5275
+# Swagger : https://localhost:5275/swagger/index.html
+```
+
+#### 3. Exécuter les Tests
+
+```bash
+# Tests unitaires
+dotnet test tests/Riada.UnitTests
+
+# Tests d'intégration (nécessite Testcontainers.MySql)
+dotnet test tests/Riada.IntegrationTests
+```
+
+## 🔧 Phases en Cours (Feuille de Route)
+
+### Phase 4 - Controllers & Endpoints
+
+**Endpoints manquants à créer** :
+
+```
+POST   /api/members                           CreateMemberUseCase
+PUT    /api/members/{id}                      UpdateMemberUseCase
+POST   /api/contracts                         CreateContractUseCase
+POST   /api/billing/payments                  RecordPaymentUseCase
+DELETE /api/courses/bookings/{mid}/{sid}      CancelBookingUseCase
+POST   /api/guests/{id}/ban                   BanGuestUseCase
+GET    /api/equipment                         ListEquipmentUseCase
+POST   /api/equipment/maintenance             CreateMaintenanceTicketUseCase
+PATCH  /api/equipment/maintenance/{id}        UpdateTicketStatusUseCase
+GET    /api/analytics/frequency               GetClubFrequencyReportUseCase
+GET    /api/analytics/options                 GetOptionPopularityUseCase
+GET    /api/analytics/health                  RunSystemHealthCheckUseCase
+```
+
+### Phase 5 - Validation & Error Handling
+
+- ✅ Validators FluentValidation (auto-enregistrés)
+- ⏳ GlobalExceptionHandler (HTTP error mapping)
+- ⏳ Validation Pipeline (RequestFilter)
+- ⏳ ProducesResponseType Swagger annotations
+
+### Phase 6 - Tests
+
+**Tests unitaires** (Moq) :
+- UseCases principals (Members, Contracts, Billing)
+- Validation des exceptions
+
+**Tests d'intégration** (Testcontainers.MySql) :
+- Procédures stockées
+- Triggers MySQL
+- Endpoints HTTP
+
+### Phase 7 - Polish
+
+- ✅ Build réussi
+- ⏳ Swagger annotations complètes
+- ⏳ Serilog configured
+- ⏳ CORS (localhost:4200, localhost:3000)
+- ⏳ Health check endpoint (/health)
 
 ## 📊 Utilisation
 
@@ -307,32 +490,22 @@ Riada/
 
 ## 🔄 Versioning
 
-### Version Actuelle : 5.0
+### Version Actuelle : 5.1 (API en développement)
 
 #### Historique
 
-- **V5.0** (Actuelle)
+- **V5.1** (Actuelle - Phase 3 en cours)
+  - API ASP.NET Core 8.0 implémentée
+  - 12 UseCases créés (Members, Contracts, Billing, Courses, Equipment, Guests, Analytics)
+  - 8 Repositories implémentés
+  - DI complète (Phase 3)
+  - Build réussi (0 erreurs)
+  
+- **V5.0**
   - Correction règle métier Pass Duo (30 min au lieu de 10 min)
   - Optimisation index composite `idx_facture_check_v2`
   - Correction trigger limite invités (vérifie statut 'Actif')
   - 25 FK complètes
-  
-- **V4.0**
-  - Ajout système Pass Duo complet
-  - Procédure `sp_CheckAccessInvite`
-  - Table `invites` et `journal_acces_invites`
-  
-- **V3.0**
-  - Sécurité renforcée (utilisateur dédié)
-  - Principe de moindre privilège
-  
-- **V2.0**
-  - Facturation automatisée
-  - Triggers de mise à jour
-  
-- **V1.0**
-  - Structure de base
-  - Contrôle d'accès membres
 
 ## 🤝 Contributions
 
@@ -374,6 +547,6 @@ Technologies utilisées :
 
 ---
 
-**🏆 Système 100% Opérationnel - V5.0**
+**🏆 API Phase 3 Complétée (V5.1) - Build Passing ✅**
 
-*Dernière mise à jour : Mars 2026*
+*Dernière mise à jour : Décembre 2024*

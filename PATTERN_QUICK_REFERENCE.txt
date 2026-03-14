@@ -1,0 +1,6 @@
+================================================================================
+RIADA USECASE PATTERN - QUICK REFERENCE & COPY-PASTE GUIDE
+================================================================================
+
+Complete working examples from the Riada codebase that you can replicate exactly.
+
