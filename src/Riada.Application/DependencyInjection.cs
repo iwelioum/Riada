@@ -8,6 +8,7 @@ using Riada.Application.UseCases.Courses;
 using Riada.Application.UseCases.Equipment;
 using Riada.Application.UseCases.Guests;
 using Riada.Application.UseCases.Members;
+using Riada.Application.Events;
 
 namespace Riada.Application;
 
@@ -17,6 +18,10 @@ public static class DependencyInjection
     {
         // Validators (auto-register all from this assembly)
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
+
+        // Events
+        services.AddSingleton<IMemberEventDispatcher, MemberEventDispatcher>();
+        services.AddHostedService<MemberLifecycleSubscriber>();
 
         // Use Cases — Access
         services.AddScoped<CheckMemberAccessUseCase>();

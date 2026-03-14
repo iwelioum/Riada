@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Riada.Application\Riada.Application.csproj" />
+    <ProjectReference Include="..\..\src\Riada.API\Riada.API.csproj" />
     <ProjectReference Include="..\..\src\Riada.Domain\Riada.Domain.csproj" />
   </ItemGroup>
 
