@@ -29,7 +29,7 @@ public class GuestsController : ControllerBase
         return CreatedAtAction(null, new { id = response.Id }, response);
     }
 
-    [HttpPost("{id:uint}/ban")]
+    [HttpPost("{id:int:min(1)}/ban")]
     [Authorize]
     public async Task<IActionResult> Ban(
         uint id,

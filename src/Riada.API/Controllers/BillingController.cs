@@ -11,6 +11,11 @@ namespace Riada.API.Controllers;
 public class BillingController : ControllerBase
 {
     [HttpPost("generate")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
+    [ProducesResponseType(422)]
     public async Task<IActionResult> GenerateMonthlyInvoice(
         [FromBody] GenerateMonthlyInvoiceRequest request,
         [FromServices] GenerateMonthlyInvoiceUseCase useCase,
@@ -21,6 +26,10 @@ public class BillingController : ControllerBase
     }
 
     [HttpGet("invoices/{id:int}")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
+    [ProducesResponseType(404)]
     public async Task<IActionResult> GetInvoiceDetail(
         uint id,
         [FromServices] GetInvoiceDetailUseCase useCase,
@@ -31,6 +40,11 @@ public class BillingController : ControllerBase
     }
 
     [HttpPost("payments")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
+    [ProducesResponseType(422)]
     public async Task<IActionResult> RecordPayment(
         [FromBody] RecordPaymentRequest request,
         [FromServices] RecordPaymentUseCase useCase,

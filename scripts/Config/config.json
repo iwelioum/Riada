@@ -1,0 +1,94 @@
+{
+  "project": {
+    "name": "Riada",
+    "version": "5.1",
+    "description": "Gym Management System API",
+    "language": "csharp",
+    "framework": "dotnet",
+    "frameworkVersion": "8.0"
+  },
+  "paths": {
+    "root": "../../",
+    "src": "../../src",
+    "tests": "../../tests",
+    "sql": "../../sql",
+    "solution": "../../Riada.sln",
+    "api": "../../src/Riada.API",
+    "unitTests": "../../tests/Riada.UnitTests",
+    "integrationTests": "../../tests/Riada.IntegrationTests"
+  },
+  "build": {
+    "configuration": "Debug",
+    "releaseConfiguration": "Release",
+    "verbosity": "normal",
+    "timeout": 300,
+    "restoreNuget": true
+  },
+  "database": {
+    "type": "mysql",
+    "version": "8.0",
+    "name": "riada_db",
+    "user": "riada_user",
+    "host": "localhost",
+    "port": 3306,
+    "connectionTimeout": 30
+  },
+  "api": {
+    "scheme": "https",
+    "host": "localhost",
+    "port": 5275,
+    "httpPort": 5174,
+    "healthCheckPath": "/health",
+    "swaggerPath": "/swagger",
+    "startupTimeout": 30
+  },
+  "docker": {
+    "enabled": true,
+    "registry": "docker.io",
+    "imageName": "riada-api",
+    "imageTag": "latest",
+    "composeFile": "Docker/docker-compose.yml"
+  },
+  "scripts": {
+    "build": {
+      "enabled": true,
+      "description": "Build the project",
+      "timeout": 300
+    },
+    "test": {
+      "enabled": true,
+      "description": "Run unit tests",
+      "timeout": 300,
+      "failOnError": true
+    },
+    "clean": {
+      "enabled": true,
+      "description": "Clean build artifacts",
+      "folders": ["bin", "obj"]
+    },
+    "deploy": {
+      "enabled": true,
+      "description": "Deploy the application",
+      "timeout": 600
+    }
+  },
+  "logging": {
+    "level": "Info",
+    "format": "datetime",
+    "colors": true,
+    "timestamps": true
+  },
+  "validation": {
+    "requireDotnet": true,
+    "requireMysql": false,
+    "requireGit": false,
+    "requiredDotnetVersion": "8.0",
+    "checkPorts": [5275, 5174, 3306]
+  },
+  "notifications": {
+    "onSuccess": true,
+    "onError": true,
+    "onWarning": true,
+    "sound": false
+  }
+}

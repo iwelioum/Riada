@@ -12,6 +12,9 @@ namespace Riada.API.Controllers;
 public class MembersController : ControllerBase
 {
     [HttpGet]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
     public async Task<IActionResult> List(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20,
@@ -29,6 +32,10 @@ public class MembersController : ControllerBase
     }
 
     [HttpGet("{id:int}")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
+    [ProducesResponseType(404)]
     public async Task<IActionResult> GetDetail(
         uint id,
         [FromServices] GetMemberDetailUseCase useCase,
@@ -39,6 +46,11 @@ public class MembersController : ControllerBase
     }
 
     [HttpPost]
+    [ProducesResponseType(201)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
+    [ProducesResponseType(422)]
     public async Task<IActionResult> Create(
         [FromBody] CreateMemberRequest request,
         [FromServices] CreateMemberUseCase useCase = default!,
@@ -48,7 +60,13 @@ public class MembersController : ControllerBase
         return CreatedAtAction(nameof(GetDetail), new { id = response.Id }, response);
     }
 
-    [HttpPut("{id:uint}")]
+    [HttpPut("{id:int:min(1)}")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(422)]
     public async Task<IActionResult> Update(
         uint id,
         [FromBody] UpdateMemberRequest request,
@@ -61,6 +79,11 @@ public class MembersController : ControllerBase
 
     [HttpDelete("{id:int}/gdpr")]
     [Authorize(Policy = "DataProtection")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
+    [ProducesResponseType(404)]
     public async Task<IActionResult> Anonymize(
         uint id,
         [FromBody] AnonymizeMemberRequest request,

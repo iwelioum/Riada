@@ -33,7 +33,7 @@ public class EquipmentController : ControllerBase
         return Ok(response);
     }
 
-    [HttpPatch("maintenance/{ticketId:uint}")]
+    [HttpPatch("maintenance/{ticketId:int:min(1)}")]
     [Authorize]
     public async Task<IActionResult> UpdateTicketStatus(
         uint ticketId,

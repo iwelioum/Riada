@@ -32,7 +32,7 @@ public class CoursesController : ControllerBase
         return Ok(new { Message = result });
     }
 
-    [HttpDelete("bookings/{memberId:uint}/{sessionId:uint}")]
+    [HttpDelete("bookings/{memberId:int:min(1)}/{sessionId:int:min(1)}")]
     public async Task<IActionResult> CancelBooking(
         uint memberId,
         uint sessionId,

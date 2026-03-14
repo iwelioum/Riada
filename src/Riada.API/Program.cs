@@ -1,5 +1,8 @@
 using System.Text;
+using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Riada.API.Auth;
@@ -39,6 +42,13 @@ builder.Services
 
 // ── Authorization (maps to MySQL roles) ──
 builder.Services.AddAuthorization(AuthorizationPolicies.ConfigurePolicies);
+
+// ── Health Checks ──
+builder.Services.AddHealthChecks()
+    .AddMySql(
+        connectionString: builder.Configuration.GetConnectionString("RiadaDb")!,
+        name: "MySQL",
+        failureStatus: Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy);
 
 // ── Controllers + Swagger ──
 builder.Services.AddControllers();
@@ -82,11 +92,11 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontends", policy =>
-    {
-        policy.WithOrigins("http://localhost:4200", "http://localhost:3000")
-              .AllowAnyHeader()
-              .AllowAnyMethod();
-    });
+        policy
+            .WithOrigins("http://localhost:4200", "http://localhost:3000")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials());
 });
 
 var app = builder.Build();
@@ -104,6 +114,13 @@ app.UseCors("AllowFrontends");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
+
+// ── Health Check ──
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    Predicate = _ => true,
+    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+});
 
 app.Run();
 

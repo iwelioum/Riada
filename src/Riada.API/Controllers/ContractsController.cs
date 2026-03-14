@@ -10,7 +10,11 @@ namespace Riada.API.Controllers;
 [Authorize]
 public class ContractsController : ControllerBase
 {
-    [HttpGet("{id:uint}")]
+    [HttpGet("{id:int:min(1)}")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
+    [ProducesResponseType(404)]
     public async Task<IActionResult> GetDetail(
         uint id,
         [FromServices] GetContractDetailUseCase useCase,
@@ -21,6 +25,11 @@ public class ContractsController : ControllerBase
     }
 
     [HttpPost]
+    [ProducesResponseType(201)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
+    [ProducesResponseType(422)]
     public async Task<IActionResult> Create(
         [FromBody] CreateContractRequest request,
         [FromServices] CreateContractUseCase useCase,
@@ -32,6 +41,12 @@ public class ContractsController : ControllerBase
 
     [HttpPost("{id:int}/freeze")]
     [Authorize(Policy = "DataProtection")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(422)]
     public async Task<IActionResult> Freeze(
         uint id,
         [FromBody] FreezeContractRequest request,
@@ -44,6 +59,12 @@ public class ContractsController : ControllerBase
 
     [HttpPost("{id:int}/renew")]
     [Authorize(Policy = "DataProtection")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
+    [ProducesResponseType(404)]
+    [ProducesResponseType(422)]
     public async Task<IActionResult> Renew(
         uint id,
         [FromServices] RenewContractUseCase useCase,
