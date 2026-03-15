@@ -1,3 +1,5 @@
+using System;
+using System.Security.Claims;
 using System.Text;
 using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -93,7 +95,16 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontends", policy =>
         policy
-            .WithOrigins("http://localhost:4200", "http://localhost:3000")
+            .SetIsOriginAllowed(origin =>
+            {
+                if (string.IsNullOrWhiteSpace(origin))
+                {
+                    return false;
+                }
+
+                var uri = new Uri(origin);
+                return uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase);
+            })
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials());
@@ -113,6 +124,28 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseCors("AllowFrontends");
 app.UseAuthentication();
+
+// Dev-only: allow frontends to hit APIs without JWT while preserving role-based policies.
+if (app.Environment.IsDevelopment())
+{
+    app.Use(async (context, next) =>
+    {
+        if (context.User?.Identity?.IsAuthenticated != true)
+        {
+            var identity = new ClaimsIdentity("DevBypass");
+            identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, "dev-user"));
+            identity.AddClaim(new Claim(ClaimTypes.Name, "dev-user"));
+            identity.AddClaim(new Claim(ClaimTypes.Role, "admin"));
+            identity.AddClaim(new Claim(ClaimTypes.Role, "billing"));
+            identity.AddClaim(new Claim(ClaimTypes.Role, "portique"));
+            identity.AddClaim(new Claim(ClaimTypes.Role, "dpo"));
+            context.User = new ClaimsPrincipal(identity);
+        }
+
+        await next();
+    });
+}
+
 app.UseAuthorization();
 app.UseMiddleware<SecurityHeadersMiddleware>();
 app.MapControllers();

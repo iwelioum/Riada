@@ -23,13 +23,14 @@ public class RegisterGuestUseCaseTests
 
         _guestRepositoryMock
             .Setup(r => r.AddAsync(It.IsAny<Guest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(1u);
+            .ReturnsAsync(guest);
 
         // Act
         var result = await _guestRepositoryMock.Object.AddAsync(guest);
 
         // Assert
-        result.Should().Be(1u);
+        result.Should().NotBeNull();
+        result.Id.Should().Be(1u);
     }
 
     [Fact]
@@ -59,7 +60,7 @@ public class RegisterGuestUseCaseTests
         var visitDate = DateTime.UtcNow.AddDays(-1);
 
         // Act & Assert
-        visitDate.Should().BeLessThan(DateTime.UtcNow);
+        visitDate.Should().BeBefore(DateTime.UtcNow);
     }
 
     [Fact]

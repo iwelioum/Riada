@@ -1,0 +1,22 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.exercise {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  .title {
+    font-weight: 700;
+    font-size: 1.1rem;
+  }
+
+  .tags {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+  }
+}

@@ -1,0 +1,33 @@
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="eyebrow">Planning</div>
+      <h1>Schedule</h1>
+      <p class="text-muted">Vue 14 jours sur les sessions.</p>
+    </div>
+    <div class="filters">
+      <select [(ngModel)]="clubId" (change)="loadSessions()">
+        <option *ngFor="let club of clubs" [value]="club.id">{{ club.name }}</option>
+      </select>
+      <button class="pill solid" (click)="loadSessions()">Rafraîchir</button>
+    </div>
+  </div>
+
+  <div *ngIf="loading" class="text-muted">Chargement du planning...</div>
+  <div *ngIf="!loading && !grouped.length" class="text-muted">Aucune session planifiée.</div>
+
+  <div class="day-grid">
+    <div class="card day" *ngFor="let day of grouped">
+      <div class="day-title">{{ day.date }}</div>
+      <div class="sessions">
+        <div class="session" *ngFor="let session of day.sessions">
+          <div>
+            <div class="session-name">{{ session.courseName }}</div>
+            <div class="text-muted">{{ session.instructorName }} · {{ session.clubName }}</div>
+          </div>
+          <div class="pill muted">{{ session.startsAt | date:'shortTime' }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

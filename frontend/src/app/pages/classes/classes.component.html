@@ -1,0 +1,47 @@
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="eyebrow">Training</div>
+      <h1>Classes</h1>
+      <p class="text-muted">Planifie et réserve des sessions pour tes membres.</p>
+    </div>
+    <div class="filters">
+      <select [(ngModel)]="clubId" (change)="loadSessions()">
+        <option *ngFor="let club of clubs" [value]="club.id">{{ club.name }}</option>
+      </select>
+      <button class="pill solid" (click)="loadSessions()">Rafraîchir</button>
+    </div>
+  </div>
+
+  <div class="loading" *ngIf="loading">Chargement des sessions...</div>
+
+  <div class="grid-2" *ngIf="!loading && sessions.length">
+    <div class="card session-card" *ngFor="let session of sessions">
+      <div class="flex-between">
+        <div>
+          <div class="session-title">{{ session.courseName }}</div>
+          <div class="text-muted">{{ session.instructorName }} · {{ session.clubName }}</div>
+        </div>
+        <div class="pill muted">{{ session.startsAt | date:'short' }}</div>
+      </div>
+
+      <div class="session-meta">
+        <span>{{ session.durationMinutes }} mins</span>
+        <span>{{ session.enrolledCount }}/{{ session.maxCapacity }} places</span>
+      </div>
+
+      <div class="capacity-bar">
+        <div class="capacity-fill" [style.width.%]="session.occupancyPercent"></div>
+      </div>
+
+      <div class="session-footer">
+        <button class="pill solid" (click)="bookSession(session.id)">Réserver</button>
+        <span class="text-muted">Occupancy {{ session.occupancyPercent }}%</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="empty" *ngIf="!loading && !sessions.length">
+    Aucune classe planifiée.
+  </div>
+</div>

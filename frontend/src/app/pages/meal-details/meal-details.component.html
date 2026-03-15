@@ -1,0 +1,17 @@
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="eyebrow">Nutrition</div>
+      <h1>Meal Details</h1>
+      <p class="text-muted">Focus macros et objectifs.</p>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="card macro" *ngFor="let macro of macros">
+      <div class="label">{{ macro.label }}</div>
+      <div class="value">{{ macro.value }}</div>
+      <div class="text-muted">Target {{ macro.target }}</div>
+    </div>
+  </div>
+</div>

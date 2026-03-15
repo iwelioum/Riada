@@ -1,0 +1,59 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.filters {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+
+  select {
+    padding: 0.5rem 0.75rem;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: #fff;
+  }
+}
+
+.loading,
+.empty {
+  color: var(--muted-foreground);
+}
+
+.session-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.session-title {
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+
+.session-meta {
+  display: flex;
+  gap: 1rem;
+  color: var(--muted-foreground);
+}
+
+.capacity-bar {
+  height: 8px;
+  background: var(--input-background);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.capacity-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #c7f36b, #bef264);
+}
+
+.session-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}

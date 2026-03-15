@@ -1,6 +1,6 @@
 # Riada Scripts
 
-Automation scripts for local development and Docker execution.
+Automation scripts for backend and frontend development.
 
 ## Current structure
 
@@ -27,14 +27,29 @@ scripts/
 
 ## Quick start
 
-### Windows
+### Backend only (Windows)
 
 ```powershell
 cd scripts\Launch
 .\launch.ps1 run
 ```
 
-or double-click `scripts\Launch\launch.bat`.
+### Frontend only (Windows)
+
+```powershell
+cd scripts\Launch
+.\launch.ps1 frontend
+```
+
+### Fullstack (Windows)
+
+```powershell
+cd scripts\Launch
+.\launch.ps1 fullstack
+```
+
+Double-clicking `launch.bat` also starts fullstack mode by default.
+If API is already running, fullstack mode reuses it and launches/reuses frontend.
 
 ### Linux/macOS
 
@@ -59,4 +74,4 @@ Use:
 scripts\Launch\test.bat
 ```
 
-This checks required launcher files, `.NET`, and key project paths.
+This checks launcher files, backend/frontend project paths, and required tools (`dotnet`, `npm`).

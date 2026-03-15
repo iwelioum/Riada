@@ -1,9 +1,10 @@
 using FluentAssertions;
 using Moq;
 using Xunit;
-using Riada.Application.DTOs.Requests.Courses;
 using Riada.Domain.Interfaces.Repositories;
 using Riada.Domain.Entities.CourseScheduling;
+using Riada.Domain.Entities.Membership;
+using Riada.Domain.Enums;
 
 namespace Riada.UnitTests.UseCases.Courses;
 
@@ -27,9 +28,9 @@ public class BookSessionUseCaseTests
         var session = new ClassSession
         {
             Id = 100,
-            Capacity = 20,
-            BookedCount = 15,
-            StartTime = DateTime.UtcNow.AddDays(7)
+            Course = new Course { MaxCapacity = 20 },
+            EnrolledCount = 15,
+            StartsAt = DateTime.UtcNow.AddDays(7)
         };
 
         _sessionRepositoryMock
@@ -41,8 +42,8 @@ public class BookSessionUseCaseTests
 
         // Assert
         result.Should().NotBeNull();
-        result!.Capacity.Should().Be(20);
-        result.BookedCount.Should().BeLessThan(result.Capacity);
+        result!.Course.MaxCapacity.Should().Be(20);
+        result.EnrolledCount.Should().BeLessThan(result.Course.MaxCapacity);
     }
 
     [Fact]
@@ -52,9 +53,9 @@ public class BookSessionUseCaseTests
         var session = new ClassSession
         {
             Id = 101,
-            Capacity = 20,
-            BookedCount = 20,
-            StartTime = DateTime.UtcNow.AddDays(7)
+            Course = new Course { MaxCapacity = 20 },
+            EnrolledCount = 20,
+            StartsAt = DateTime.UtcNow.AddDays(7)
         };
 
         _sessionRepositoryMock
@@ -66,7 +67,7 @@ public class BookSessionUseCaseTests
 
         // Assert
         result.Should().NotBeNull();
-        result!.BookedCount.Should().Be(result.Capacity);
+        result!.EnrolledCount.Should().Be(result.Course.MaxCapacity);
     }
 
     [Fact]
@@ -88,7 +89,7 @@ public class BookSessionUseCaseTests
     public async Task BookSession_WithInactiveMember_ShouldFail()
     {
         // Arrange
-        var member = new Domain.Entities.Membership.Member { Id = 3, Status = "Suspended" };
+        var member = new Member { Id = 3, Status = MemberStatus.Suspended };
 
         _memberRepositoryMock
             .Setup(r => r.GetByIdAsync(3u, It.IsAny<CancellationToken>()))
@@ -99,7 +100,7 @@ public class BookSessionUseCaseTests
 
         // Assert
         result.Should().NotBeNull();
-        result!.Status.Should().Be("Suspended");
+        result!.Status.Should().Be(MemberStatus.Suspended);
     }
 
     [Fact]
@@ -109,13 +110,13 @@ public class BookSessionUseCaseTests
         var session = new ClassSession
         {
             Id = 102,
-            Capacity = 20,
-            BookedCount = 10,
-            StartTime = DateTime.UtcNow.AddDays(-1)
+            Course = new Course { MaxCapacity = 20 },
+            EnrolledCount = 10,
+            StartsAt = DateTime.UtcNow.AddDays(-1)
         };
 
         // Act & Assert
-        session.StartTime.Should().BeLessThan(DateTime.UtcNow);
+        session.StartsAt.Should().BeBefore(DateTime.UtcNow);
     }
 
     [Fact]

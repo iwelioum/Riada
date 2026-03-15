@@ -3,8 +3,8 @@ REM ============================================================================
 REM Riada - Windows launcher
 REM ============================================================================
 REM Usage:
-REM   Double-click: launch.bat
-REM   Command line: launch.bat [run|build-only|test-only|release|clean|health|docker|help]
+REM   Double-click: launch.bat (starts fullstack: backend + frontend)
+REM   Command line: launch.bat [run|build-only|test-only|release|clean|health|docker|frontend|frontend-build|fullstack|help]
 REM ============================================================================
 
 setlocal
@@ -16,7 +16,7 @@ set "LAUNCH_ARGS=%*"
 
 if "%~1"=="" (
     set "INTERACTIVE=1"
-    set "LAUNCH_ARGS=run"
+    set "LAUNCH_ARGS=fullstack"
 )
 
 if not exist "%PS_SCRIPT%" (
@@ -28,6 +28,7 @@ if not exist "%PS_SCRIPT%" (
 if "%INTERACTIVE%"=="1" (
     echo.
     echo Starting RIADA launcher in interactive mode...
+    echo Mode: fullstack ^(backend + frontend^)
     echo This window will stay open when the command ends.
     echo.
 )

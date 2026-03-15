@@ -1,0 +1,40 @@
+import { Routes } from '@angular/router';
+import { DashboardComponent } from './pages/dashboard/dashboard.component';
+import { ClassesComponent } from './pages/classes/classes.component';
+import { MessagesComponent } from './pages/messages/messages.component';
+import { StatisticsComponent } from './pages/statistics/statistics.component';
+import { ExercisesComponent } from './pages/exercises/exercises.component';
+import { ScheduleComponent } from './pages/schedule/schedule.component';
+import { ClassDetailsComponent } from './pages/class-details/class-details.component';
+import { TrainersComponent } from './pages/trainers/trainers.component';
+import { MealPlanComponent } from './pages/meal-plan/meal-plan.component';
+import { MealDetailsComponent } from './pages/meal-details/meal-details.component';
+import { WorkoutTrackerComponent } from './pages/workout-tracker/workout-tracker.component';
+import { MembersComponent } from './pages/members/members.component';
+import { BillingComponent } from './pages/billing/billing.component';
+import { EquipmentComponent } from './pages/equipment/equipment.component';
+import { AccessControlComponent } from './pages/access-control/access-control.component';
+import { SubscriptionsComponent } from './pages/subscriptions/subscriptions.component';
+import { GuestsComponent } from './pages/guests/guests.component';
+
+export const routes: Routes = [
+  { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
+  { path: 'dashboard', component: DashboardComponent },
+  { path: 'members', component: MembersComponent },
+  { path: 'statistics', component: StatisticsComponent },
+  { path: 'exercises', component: ExercisesComponent },
+  { path: 'schedule', component: ScheduleComponent },
+  { path: 'classes', component: ClassesComponent },
+  { path: 'classes/:id', component: ClassDetailsComponent },
+  { path: 'trainers', component: TrainersComponent },
+  { path: 'messages', component: MessagesComponent },
+  { path: 'billing', component: BillingComponent },
+  { path: 'equipment', component: EquipmentComponent },
+  { path: 'access', component: AccessControlComponent },
+  { path: 'subscriptions', component: SubscriptionsComponent },
+  { path: 'guests', component: GuestsComponent },
+  { path: 'workout-tracker', component: WorkoutTrackerComponent },
+  { path: 'meal-plan', component: MealPlanComponent },
+  { path: 'meal-plan/:id', component: MealDetailsComponent },
+  { path: '**', redirectTo: '/dashboard' }
+];

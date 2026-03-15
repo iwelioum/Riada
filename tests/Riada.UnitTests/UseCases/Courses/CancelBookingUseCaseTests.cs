@@ -3,6 +3,7 @@ using Moq;
 using Xunit;
 using Riada.Domain.Interfaces.Repositories;
 using Riada.Domain.Entities.CourseScheduling;
+using Riada.Domain.Enums;
 
 namespace Riada.UnitTests.UseCases.Courses;
 
@@ -23,19 +24,18 @@ public class CancelBookingUseCaseTests
         {
             MemberId = 1,
             SessionId = 100,
-            Status = "Confirmed",
-            CreatedAt = DateTime.UtcNow.AddDays(-5)
+            Status = BookingStatus.Confirmed,
+            BookedAt = DateTime.UtcNow.AddDays(-5)
         };
 
         _bookingRepositoryMock
-            .Setup(r => r.RemoveAsync(booking, It.IsAny<CancellationToken>()))
-            .Returns(Task.CompletedTask);
+            .Setup(r => r.Remove(booking));
 
         // Act
-        await _bookingRepositoryMock.Object.RemoveAsync(booking);
+        _bookingRepositoryMock.Object.Remove(booking);
 
         // Assert
-        _bookingRepositoryMock.Verify(r => r.RemoveAsync(booking, It.IsAny<CancellationToken>()), Times.Once);
+        _bookingRepositoryMock.Verify(r => r.Remove(booking), Times.Once);
     }
 
     [Fact]
@@ -94,12 +94,12 @@ public class CancelBookingUseCaseTests
         {
             MemberId = 2,
             SessionId = 101,
-            Status = "Cancelled",
-            CreatedAt = DateTime.UtcNow.AddDays(-10)
+            Status = BookingStatus.Cancelled,
+            BookedAt = DateTime.UtcNow.AddDays(-10)
         };
 
         // Act & Assert
-        booking.Status.Should().Be("Cancelled");
+        booking.Status.Should().Be(BookingStatus.Cancelled);
     }
 }
 

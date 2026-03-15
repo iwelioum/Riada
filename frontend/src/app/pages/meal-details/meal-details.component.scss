@@ -1,0 +1,20 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.macro {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+
+  .label {
+    color: var(--muted-foreground);
+  }
+
+  .value {
+    font-weight: 800;
+    font-size: 1.4rem;
+  }
+}

@@ -1,0 +1,47 @@
+<div class="page-container">
+  <div class="page-header">
+    <div>
+      <h2>Access Control</h2>
+      <p class="text-muted">Vérifiez l’accès des membres et invités sur un club.</p>
+    </div>
+    <select [(ngModel)]="clubId">
+      <option [ngValue]="club.id" *ngFor="let club of clubs">{{ club.name }}</option>
+    </select>
+  </div>
+
+  <div class="grid-two">
+    <div class="card">
+      <div class="card-header">Member access</div>
+      <div class="form-row">
+        <label>Member ID</label>
+        <input type="number" [(ngModel)]="memberId" />
+      </div>
+      <button class="btn btn-primary" (click)="checkMember()" [disabled]="loadingMember">Check</button>
+      <div class="result" *ngIf="memberResult">
+        <div class="badge" [ngClass]="memberResult.decision === 'Granted' ? 'badge-success' : 'badge-danger'">
+          {{ memberResult.decision }}
+        </div>
+        <div class="text-muted" *ngIf="memberResult.denialReason">Reason: {{ memberResult.denialReason }}</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Guest access</div>
+      <div class="form-row">
+        <label>Guest ID</label>
+        <input type="number" [(ngModel)]="guestId" />
+      </div>
+      <div class="form-row">
+        <label>Companion Member ID</label>
+        <input type="number" [(ngModel)]="companionMemberId" />
+      </div>
+      <button class="btn btn-primary" (click)="checkGuest()" [disabled]="loadingGuest">Check</button>
+      <div class="result" *ngIf="guestResult">
+        <div class="badge" [ngClass]="guestResult.decision === 'Granted' ? 'badge-success' : 'badge-danger'">
+          {{ guestResult.decision }}
+        </div>
+        <div class="text-muted" *ngIf="guestResult.denialReason">Reason: {{ guestResult.denialReason }}</div>
+      </div>
+    </div>
+  </div>
+</div>

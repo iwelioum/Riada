@@ -1,4 +1,5 @@
 using FluentAssertions;
+using System.Linq;
 using Moq;
 using Xunit;
 using Riada.Application.DTOs.Requests.Billing;
@@ -25,9 +26,9 @@ public class GenerateMonthlyInvoiceUseCaseTests
 
         var generatedInvoices = new List<Invoice>
         {
-            new() { Id = 1, Amount = 50.00m, CreatedAt = DateTime.Now },
-            new() { Id = 2, Amount = 75.00m, CreatedAt = DateTime.Now },
-            new() { Id = 3, Amount = 60.00m, CreatedAt = DateTime.Now }
+            new() { Id = 1, AmountInclTax = 50.00m, CreatedAt = DateTime.Now },
+            new() { Id = 2, AmountInclTax = 75.00m, CreatedAt = DateTime.Now },
+            new() { Id = 3, AmountInclTax = 60.00m, CreatedAt = DateTime.Now }
         };
 
         // Act
@@ -35,7 +36,7 @@ public class GenerateMonthlyInvoiceUseCaseTests
 
         // Assert
         invoices.Should().HaveCount(3);
-        invoices.Sum(i => i.Amount).Should().Be(185.00m);
+        invoices.Sum(i => i.AmountInclTax).Should().Be(185.00m);
     }
 
     [Fact]
@@ -79,12 +80,12 @@ public class GenerateMonthlyInvoiceUseCaseTests
         // Arrange
         var invoices = new List<Invoice>
         {
-            new() { Id = 10, Amount = 100.00m, CreatedAt = new DateTime(2024, 10, 1) },
-            new() { Id = 11, Amount = 200.00m, CreatedAt = new DateTime(2024, 10, 15) }
+            new() { Id = 10, AmountInclTax = 100.00m, CreatedAt = new DateTime(2024, 10, 1) },
+            new() { Id = 11, AmountInclTax = 200.00m, CreatedAt = new DateTime(2024, 10, 15) }
         };
 
         // Act
-        var total = invoices.Sum(i => i.Amount);
+        var total = invoices.Sum(i => i.AmountInclTax);
 
         // Assert
         total.Should().Be(300.00m);

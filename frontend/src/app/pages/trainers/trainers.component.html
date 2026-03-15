@@ -1,0 +1,21 @@
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="eyebrow">Team</div>
+      <h1>Trainers</h1>
+      <p class="text-muted">Coachs disponibles et leurs spécialités.</p>
+    </div>
+  </div>
+
+  <div class="grid-3">
+    <div class="card trainer" *ngFor="let trainer of trainers">
+      <div class="avatar">{{ trainer.name.charAt(0) }}</div>
+      <div class="info">
+        <div class="name">{{ trainer.name }}</div>
+        <div class="text-muted">{{ trainer.specialty }}</div>
+        <div class="rating">⭐ {{ trainer.rating }}</div>
+      </div>
+      <button class="pill solid">Book</button>
+    </div>
+  </div>
+</div>

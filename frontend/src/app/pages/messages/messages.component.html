@@ -1,0 +1,20 @@
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="eyebrow">Inbox</div>
+      <h1>Messages</h1>
+      <p class="text-muted">Échanges récents avec les membres.</p>
+    </div>
+    <button class="pill solid">Nouveau</button>
+  </div>
+
+  <div class="card">
+    <div class="message" *ngFor="let msg of messages">
+      <div>
+        <div class="name">{{ msg.from }}</div>
+        <div class="text-muted">{{ msg.preview }}</div>
+      </div>
+      <div class="pill muted">{{ msg.time }}</div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,67 @@
+<div class="app-shell">
+  <aside class="sidebar" [class.collapsed]="!sidebarOpen">
+    <div class="brand">
+      <div class="brand-icon">⚡</div>
+      <div>
+        <div class="brand-title">FitMove</div>
+        <div class="brand-sub">Riada Platform</div>
+      </div>
+    </div>
+
+    <nav class="nav-menu">
+      <a
+        *ngFor="let item of navItems"
+        [routerLink]="item.path"
+        [routerLinkActive]="'active'"
+        [routerLinkActiveOptions]="{ exact: !!item.exact }"
+        class="nav-link"
+      >
+        <span class="icon">{{ item.icon }}</span>
+        <span class="label">{{ item.label }}</span>
+        <span *ngIf="item.badge" class="badge">{{ item.badge }}</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-card">
+      <div class="sidebar-card-icon">⚡</div>
+      <div class="sidebar-card-title">Track. Analyze. Succeed.</div>
+      <p class="sidebar-card-text">
+        Surveille tes progrès, fixe tes objectifs et atteins-les plus vite.
+      </p>
+      <button class="btn-upgrade">Upgrade FitMove 3.2</button>
+    </div>
+
+    <button class="logout">
+      <span class="icon">↩</span>
+      Logout
+    </button>
+  </aside>
+
+  <div class="shell-main">
+    <header class="topbar">
+      <div class="left">
+        <button class="menu-toggle" (click)="toggleSidebar()">☰</button>
+        <div class="search">
+          <span class="search-icon">🔍</span>
+          <input type="text" placeholder="Search anything" />
+        </div>
+      </div>
+      <div class="right">
+        <button class="circle blue">?</button>
+        <button class="circle yellow">!</button>
+        <button class="circle lime">🔔</button>
+        <div class="profile">
+          <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop" alt="User" />
+          <div>
+            <div class="name">Kalendra Wingman</div>
+            <div class="role">Coach</div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="content">
+      <ng-content></ng-content>
+    </main>
+  </div>
+</div>

@@ -1,0 +1,40 @@
+{
+  "name": "riada-frontend",
+  "version": "0.0.0",
+  "scripts": {
+    "ng": "node ./node_modules/@angular/cli/lib/init.js",
+    "start": "npm run dev",
+    "dev": "npm run serve:dist",
+    "build": "npm run ng -- build",
+    "watch": "npm run ng -- build --watch --configuration development",
+    "serve:dist": "node -e \"const { createServer } = require('http-server'); const net = require('net'); const path = require('path'); const root = path.join(__dirname,'dist','riada-frontend','browser'); const host='localhost'; const start=Number(process.env.PORT)||4200; const tryPort=(p)=>new Promise((res)=>{const s=net.createServer(); s.once('error',()=>res(null)); s.once('listening',()=>s.close(()=>res(p))); s.listen(p,host);}); (async()=>{let port=start; while(!(await tryPort(port))){ port++; if(port>start+10) throw new Error('No free port found'); } createServer({ root, cache:-1, cors:true }).listen(port,host,()=>console.log(`Serving dist on http://${host}:${port}`)); })().catch((err)=>{ console.error(err); process.exit(1); });\"",
+    "test": "npm run ng -- test"
+  },
+  "private": true,
+  "dependencies": {
+    "@angular/common": "^19.2.0",
+    "@angular/compiler": "^19.2.0",
+    "@angular/core": "^19.2.0",
+    "@angular/forms": "^19.2.0",
+    "@angular/platform-browser": "^19.2.0",
+    "@angular/platform-browser-dynamic": "^19.2.0",
+    "@angular/router": "^19.2.0",
+    "rxjs": "~7.8.0",
+    "tslib": "^2.3.0",
+    "zone.js": "~0.15.0"
+  },
+  "devDependencies": {
+    "@angular-devkit/build-angular": "^19.2.22",
+    "@angular/cli": "^19.2.22",
+    "@angular/compiler-cli": "^19.2.0",
+    "@types/jasmine": "~5.1.0",
+    "jasmine-core": "~5.6.0",
+    "karma": "~6.4.0",
+    "karma-chrome-launcher": "~3.2.0",
+    "karma-coverage": "~2.2.0",
+    "karma-jasmine": "~5.1.0",
+    "karma-jasmine-html-reporter": "~2.1.0",
+    "typescript": "~5.7.2",
+    "http-server": "^14.1.1"
+  }
+}

@@ -4,6 +4,7 @@ using Xunit;
 using Riada.Application.DTOs.Requests.Billing;
 using Riada.Domain.Interfaces.Repositories;
 using Riada.Domain.Entities.Billing;
+using Riada.Domain.Enums;
 using FluentValidation;
 
 namespace Riada.UnitTests.UseCases.Billing;
@@ -25,7 +26,7 @@ public class RecordPaymentUseCaseTests
         // Arrange
         var invoiceId = 1u;
         var amount = 150.00m;
-        var invoice = new Invoice { Id = invoiceId, Amount = 150.00m, Status = "Pending" };
+        var invoice = new Invoice { Id = invoiceId, AmountInclTax = 150.00m, Status = InvoiceStatus.Issued };
 
         _invoiceRepositoryMock
             .Setup(r => r.GetByIdAsync(invoiceId, It.IsAny<CancellationToken>()))
@@ -36,7 +37,8 @@ public class RecordPaymentUseCaseTests
 
         // Assert
         result.Should().NotBeNull();
-        result!.Amount.Should().Be(150.00m);
+        result!.AmountInclTax.Should().Be(150.00m);
+        result.Status.Should().Be(InvoiceStatus.Issued);
     }
 
     [Fact]
@@ -100,7 +102,7 @@ public class RecordPaymentUseCaseTests
 
         // Act & Assert
         amount.Should().Be(0);
-        amount.Should().NotBeGreaterThan(0);
+        amount.Should().BeLessOrEqualTo(0);
     }
 }
 

@@ -1,15 +1,15 @@
 # Riada Launch Scripts
 
-This folder contains the launch entry points used during development.
+This folder contains launch entry points for backend-only and fullstack workflows.
 
 ## Files
 
 - `launch.ps1` - Main Windows PowerShell launcher.
 - `launch.bat` - Windows batch wrapper around `launch.ps1`.
 - `launch.sh` - Linux/macOS launcher.
-- `test.bat` - Quick local verification for required launch files.
+- `test.bat` - Quick verification of launcher prerequisites.
 - `CREATE_SHORTCUT.ps1` - Creates a desktop shortcut to `launch.bat`.
-- `CREATE_SHORTCUT.cmd` - Batch wrapper to run shortcut creation.
+- `CREATE_SHORTCUT.cmd` - Batch wrapper for shortcut creation.
 
 ## Quick start
 
@@ -21,6 +21,21 @@ cd scripts\Launch
 ```
 
 Or double-click `launch.bat`.
+By default (no argument), `launch.bat` starts **fullstack** (`backend + frontend`).
+
+### Frontend only
+
+```powershell
+cd scripts\Launch
+.\launch.ps1 frontend
+```
+
+### Fullstack (backend + frontend)
+
+```powershell
+cd scripts\Launch
+.\launch.ps1 fullstack
+```
 
 ### Linux/macOS
 
@@ -32,10 +47,13 @@ chmod +x launch.sh
 
 ## Supported commands
 
-- `run` - restore, clean, build, test, and launch API
-- `build-only` - restore, clean, build
-- `test-only` - restore, clean, build, test
-- `release` - restore, clean, build Release
+- `run` - restore, clean, build API, and launch API
+- `build-only` - restore, clean, build backend
+- `test-only` - restore, clean, build backend, run unit tests
+- `release` - restore, clean, build backend in Release
+- `frontend` - install deps if needed and run frontend dev server
+- `frontend-build` - install deps if needed and build frontend
+- `fullstack` - build backend then launch backend + frontend (reuses already-running API if detected)
 - `clean` - remove `bin` and `obj`
 - `health` - check `https://localhost:5275/health`
 - `docker` - run Docker compose from `scripts\Docker`
@@ -60,12 +78,12 @@ test.bat --no-pause
 ## Troubleshooting
 
 - If `dotnet` is missing, install .NET SDK 8+.
+- If `npm` is missing, install Node.js LTS.
 - If launch fails with `Microsoft.AspNetCore.App, version 8.0.0 not found`, install ASP.NET Core Runtime 8.x (or SDK 8.x):
   - https://dotnet.microsoft.com/download/dotnet/8.0
-- If build fails, run from repo root:
+- If backend build fails, run from repo root:
   - `dotnet restore Riada.sln`
-  - `dotnet build Riada.sln`
+  - `dotnet build src\Riada.API\Riada.API.csproj`
+- If frontend build fails, run:
+  - `cd frontend && npm install && npm run build`
 - If health check fails, ensure API is running first.
-- If build fails with file lock errors (`MSB3021`/`MSB3027`), an old `Riada.API` process is still running:
-  - Stop the old API window with `Ctrl+C`
-  - Run again

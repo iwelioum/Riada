@@ -1,0 +1,157 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.panel {
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  position: relative;
+
+  &.blue { background: linear-gradient(145deg, #dbeafe, #bfdbfe); }
+  &.yellow { background: linear-gradient(145deg, #fef08a, #fde68a); }
+  &.lime { background: linear-gradient(145deg, #ecfccb, #d9f99d); }
+}
+
+.panel-title {
+  font-weight: 700;
+}
+
+.panel-value {
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.progress {
+  width: 100%;
+  height: 10px;
+  background: rgba(255,255,255,0.6);
+  border-radius: 999px;
+
+  .bar {
+    height: 100%;
+    background: #0f172a;
+    border-radius: 999px;
+  }
+}
+
+.ring {
+  width: 140px;
+  height: 140px;
+  border-radius: 999px;
+  border: 12px solid rgba(255,255,255,0.6);
+  display: grid;
+  place-items: center;
+  margin: 0.5rem auto;
+  position: relative;
+  overflow: hidden;
+}
+
+.ring-inner {
+  text-align: center;
+}
+
+.ring-value {
+  font-size: 1.8rem;
+  font-weight: 800;
+}
+
+.ring-sub {
+  color: var(--muted-foreground);
+}
+
+.center { text-align: center; }
+
+.bars {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(60px, 1fr));
+  gap: 0.5rem;
+  margin-top: 1rem;
+  align-items: end;
+}
+
+.bar-item {
+  text-align: center;
+}
+
+.bar-visual {
+  height: 180px;
+  border-radius: 12px;
+  background: var(--input-background);
+  display: flex;
+  align-items: flex-end;
+  padding: 0.4rem;
+}
+
+.fill {
+  width: 100%;
+  border-radius: 10px;
+  background: #bfdbfe;
+
+  &.highlight {
+    background: #c7f36b;
+  }
+}
+
+.bar-label {
+  margin-top: 0.5rem;
+  color: var(--muted-foreground);
+  font-weight: 700;
+}
+
+.stacked {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}
+
+.stack-row {
+  display: grid;
+  grid-template-columns: 50px 1fr;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.stack-label {
+  color: var(--muted-foreground);
+  font-weight: 700;
+}
+
+.stack-bars {
+  display: flex;
+  height: 12px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--input-background);
+
+  .resting { background: #fde68a; }
+  .active { background: #bfdbfe; }
+}
+
+.body-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.6rem;
+  margin-top: 0.9rem;
+}
+
+.body-card {
+  background: var(--input-background);
+  border-radius: 12px;
+  padding: 0.75rem;
+}
+
+.body-value {
+  font-weight: 800;
+  font-size: 1.3rem;
+}

@@ -3,7 +3,7 @@
 # Riada - Launch Script (Bash)
 # ============================================================================
 # Description: Main automation entry point for Linux/macOS.
-# Usage: ./launch.sh [run|build-only|test-only|release|clean|health|docker|help]
+# Usage: ./launch.sh [run|build-only|test-only|release|clean|health|docker|frontend|frontend-build|fullstack|help]
 # ============================================================================
 
 set -euo pipefail
@@ -17,11 +17,14 @@ NC='\033[0m'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 API_PROJECT="$PROJECT_ROOT/src/Riada.API"
+API_CSPROJ="$API_PROJECT/Riada.API.csproj"
+FRONTEND_PROJECT="$PROJECT_ROOT/frontend"
 SOLUTION="$PROJECT_ROOT/Riada.sln"
 UNIT_TESTS="$PROJECT_ROOT/tests/Riada.UnitTests/Riada.UnitTests.csproj"
 HEALTH_URL="https://localhost:5275/health"
 SWAGGER_URL="https://localhost:5275/swagger"
 API_URL="https://localhost:5275"
+FRONTEND_URL="http://localhost:5173"
 
 COMMAND="${1:-run}"
 
@@ -46,10 +49,13 @@ USAGE:
   ./launch.sh [command]
 
 COMMANDS:
-  run          Restore, build, test, and launch the API (default)
-  build-only   Restore and build only
+  run          Restore, build API, and launch the API (default)
+  build-only   Restore and build API only
   test-only    Restore, build, and run unit tests
-  release      Restore and build in Release mode
+  release      Restore and build API in Release mode
+  frontend     Install deps if needed and launch frontend dev server
+  frontend-build Install deps if needed and build frontend
+  fullstack    Build backend API, then launch backend + frontend
   clean        Remove bin/ and obj/ folders
   health       Check API health endpoint
   docker       Start services with Docker Compose
@@ -57,7 +63,7 @@ COMMANDS:
 EOF
 }
 
-validate() {
+validate_backend() {
   header "VALIDATION"
   if ! command -v dotnet >/dev/null 2>&1; then
     log_error "dotnet is not installed or not available in PATH."
@@ -76,6 +82,31 @@ validate() {
     exit 1
   fi
   log_success "API project directory found"
+
+  if [[ ! -f "$API_CSPROJ" ]]; then
+    log_error "API project file not found: $API_CSPROJ"
+    exit 1
+  fi
+  log_success "API project file found"
+}
+
+validate_frontend() {
+  header "FRONTEND VALIDATION"
+  if [[ ! -d "$FRONTEND_PROJECT" ]]; then
+    log_error "Frontend directory not found: $FRONTEND_PROJECT"
+    exit 1
+  fi
+  if [[ ! -f "$FRONTEND_PROJECT/package.json" ]]; then
+    log_error "Frontend package.json not found: $FRONTEND_PROJECT/package.json"
+    exit 1
+  fi
+  if ! command -v npm >/dev/null 2>&1; then
+    log_error "npm is not installed or not available in PATH."
+    exit 1
+  fi
+
+  log_success "Frontend project found"
+  log_success "npm found: $(npm --version)"
 }
 
 clean() {
@@ -97,8 +128,8 @@ restore() {
 build() {
   local configuration="${1:-Debug}"
   header "BUILD ($configuration)"
-  log_info "Running dotnet build --configuration $configuration..."
-  dotnet build "$SOLUTION" --configuration "$configuration"
+  log_info "Running dotnet build $API_CSPROJ --configuration $configuration..."
+  dotnet build "$API_CSPROJ" --configuration "$configuration"
   log_success "Build successful"
 }
 
@@ -112,6 +143,73 @@ test_unit() {
   log_info "Running dotnet test..."
   dotnet test "$UNIT_TESTS" --verbosity minimal
   log_success "All unit tests passed"
+}
+
+frontend_install_if_needed() {
+  if [[ -d "$FRONTEND_PROJECT/node_modules" ]]; then
+    return
+  fi
+
+  header "FRONTEND INSTALL"
+  log_info "node_modules not found. Running npm install..."
+  (
+    cd "$FRONTEND_PROJECT"
+    npm install
+  )
+  log_success "Frontend dependencies installed"
+}
+
+run_frontend_dev() {
+  validate_frontend
+  frontend_install_if_needed
+  header "RUN FRONTEND"
+  echo "Frontend URL: $FRONTEND_URL"
+  echo "Press Ctrl+C to stop the frontend server."
+  echo ""
+  cd "$FRONTEND_PROJECT"
+  npm run dev
+}
+
+build_frontend() {
+  validate_frontend
+  frontend_install_if_needed
+  header "FRONTEND BUILD"
+  (
+    cd "$FRONTEND_PROJECT"
+    npm run build
+  )
+  log_success "Frontend build successful"
+}
+
+run_fullstack() {
+  validate_backend
+  validate_frontend
+  restore
+  clean
+  build "Debug"
+  frontend_install_if_needed
+
+  header "FULLSTACK"
+  log_info "Starting frontend in background..."
+  (
+    cd "$FRONTEND_PROJECT"
+    npm run dev
+  ) &
+  FRONTEND_PID=$!
+  log_success "Frontend started (PID: $FRONTEND_PID) at $FRONTEND_URL"
+  log_info "Starting API in foreground..."
+
+  cleanup() {
+    if kill -0 "$FRONTEND_PID" >/dev/null 2>&1; then
+      log_info "Stopping frontend process $FRONTEND_PID..."
+      kill "$FRONTEND_PID" >/dev/null 2>&1 || true
+    fi
+  }
+
+  trap cleanup EXIT INT TERM
+  run_api
+  cleanup
+  trap - EXIT INT TERM
 }
 
 run_api() {
@@ -162,27 +260,36 @@ case "$COMMAND" in
     show_help
     ;;
   clean)
-    validate
+    validate_backend
     clean
     ;;
   build-only)
-    validate
+    validate_backend
     restore
     clean
     build "Debug"
     ;;
   test-only)
-    validate
+    validate_backend
     restore
     clean
     build "Debug"
     test_unit
     ;;
   release)
-    validate
+    validate_backend
     restore
     clean
     build "Release"
+    ;;
+  frontend)
+    run_frontend_dev
+    ;;
+  frontend-build)
+    build_frontend
+    ;;
+  fullstack)
+    run_fullstack
     ;;
   health)
     health
@@ -191,11 +298,10 @@ case "$COMMAND" in
     docker_up
     ;;
   run|"")
-    validate
+    validate_backend
     restore
     clean
     build "Debug"
-    test_unit
     run_api
     ;;
   *)

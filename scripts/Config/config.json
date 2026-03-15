@@ -10,10 +10,14 @@
   "paths": {
     "root": "../../",
     "src": "../../src",
+    "frontend": "../../frontend",
+    "frontendSrc": "../../frontend/src",
+    "frontendPackageJson": "../../frontend/package.json",
     "tests": "../../tests",
     "sql": "../../sql",
     "solution": "../../Riada.sln",
     "api": "../../src/Riada.API",
+    "apiCsproj": "../../src/Riada.API/Riada.API.csproj",
     "unitTests": "../../tests/Riada.UnitTests",
     "integrationTests": "../../tests/Riada.IntegrationTests"
   },
@@ -38,6 +42,8 @@
     "host": "localhost",
     "port": 5275,
     "httpPort": 5174,
+    "frontendPort": 5173,
+    "frontendUrl": "http://localhost:5173",
     "healthCheckPath": "/health",
     "swaggerPath": "/swagger",
     "startupTimeout": 30
@@ -80,10 +86,11 @@
   },
   "validation": {
     "requireDotnet": true,
+    "requireNpm": true,
     "requireMysql": false,
     "requireGit": false,
     "requiredDotnetVersion": "8.0",
-    "checkPorts": [5275, 5174, 3306]
+    "checkPorts": [5275, 5174, 5173, 3306]
   },
   "notifications": {
     "onSuccess": true,

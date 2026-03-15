@@ -1,0 +1,48 @@
+<div class="equipment-container">
+  <div class="page-header">
+    <h2>Equipment Management</h2>
+    <div class="filters">
+      <select [(ngModel)]="filters.clubId" (change)="loadEquipment()">
+        <option [ngValue]="undefined">All clubs</option>
+        <option *ngFor="let club of clubs" [ngValue]="club.id">{{ club.name }}</option>
+      </select>
+      <select [(ngModel)]="filters.status" (change)="loadEquipment()">
+        <option value="">All status</option>
+        <option value="Operational">Operational</option>
+        <option value="Maintenance">Maintenance</option>
+        <option value="Retired">Retired</option>
+      </select>
+      <select [(ngModel)]="ticketPriority">
+        <option value="Low">Low</option>
+        <option value="Medium">Medium</option>
+        <option value="High">High</option>
+      </select>
+      <button class="btn btn-primary" (click)="loadEquipment()">Refresh</button>
+    </div>
+  </div>
+
+  <div class="loading" *ngIf="loading">Loading equipment...</div>
+  
+  <div class="equipment-grid" *ngIf="!loading && equipment.length > 0">
+    <div class="equipment-card" *ngFor="let item of equipment">
+      <div class="equipment-header">
+        <h3>{{ item.name }}</h3>
+        <span [ngClass]="'badge ' + getStatusBadgeClass(item.status)">
+          {{ item.status }}
+        </span>
+      </div>
+      <div class="equipment-body">
+        <p><strong>Type:</strong> {{ item.equipmentType }}</p>
+        <p><strong>Club ID:</strong> {{ item.clubId }}</p>
+        <p><strong>Acquisition Year:</strong> {{ item.acquisitionYear }}</p>
+      </div>
+      <div class="equipment-footer">
+        <button class="btn btn-primary" (click)="createTicket(item.id)">Report Issue</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="empty-state" *ngIf="!loading && equipment.length === 0">
+    <p>No equipment registered yet.</p>
+  </div>
+</div>

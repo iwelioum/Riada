@@ -13,6 +13,7 @@
 ### ⚡ Le Plus Simple (Windows)
 **Double-clic sur:** `scripts/Launch/launch.bat`
 - ✅ Auto-détecte le projet
+- ✅ Démarre le mode fullstack (backend + frontend)
 - ✅ Restore → Build → Run automatique
 - ✅ Affiche les erreurs clairement
 
@@ -71,6 +72,20 @@ Riada/
 │   ├── Riada.Infrastructure/
 │   └── Riada.API/
 │
+├── 🌐 frontend/                # Frontend Angular 19 (Standalone)
+│   ├── src/
+│   │   ├── app/
+│   │   │   ├── pages/          # 10 page components
+│   │   │   ├── layout/         # Main layout wrapper
+│   │   │   ├── core/           # Services & models
+│   │   │   ├── app.routes.ts   # Routing config
+│   │   │   └── app.config.ts   # HttpClient provider
+│   │   └── styles.scss         # Global design system
+│   ├── dist/                   # Production build (ng build)
+│   ├── angular.json            # CLI configuration
+│   ├── package.json            # Dependencies
+│   └── README.md               # Frontend documentation
+│
 ├── 🧪 tests/                   # Tests
 │
 ├── 🗄️ sql/                     # Scripts MySQL
@@ -91,6 +106,9 @@ Riada/
 | **Guide des scripts** | AUTOMATION_GUIDE.md | `docs/` |
 | **Lancer l'API (Windows)** | launch.bat / launch.ps1 | `scripts/Launch/` |
 | **Lancer l'API (Mac/Linux)** | launch.sh | `scripts/Launch/` |
+| **Lancer le frontend** | launch.ps1 frontend | `scripts/Launch/` |
+| **Lancer fullstack** | launch.ps1 fullstack | `scripts/Launch/` |
+| **Code frontend (Angular)** | README.md | `frontend/` |
 | **Lancer avec Docker** | docker-compose.yml | `scripts/Docker/` |
 
 ---
@@ -102,6 +120,15 @@ Riada/
 cd scripts\Launch
 .\launch.ps1 run
 # ou double-clic sur launch.bat
+
+# Lancer le frontend (Windows, Node 24+)
+cd frontend
+npm install
+npm run build && npm run serve:dist   # choisit un port libre (4200+)
+
+# Lancer backend + frontend (Windows) via automation
+cd scripts\Launch
+.\launch.ps1 fullstack                # build + serve dist côté frontend
 
 # Lancer l'API (Mac/Linux)
 cd scripts/Launch
@@ -120,32 +147,119 @@ test.bat
 
 ## 📊 Statut
 
-| Phase | Status |
-|-------|--------|
-| Build | ✅ 0 erreurs |
-| UseCases | ✅ 12 créés |
-| DI | ✅ Complète |
-| Endpoints | ✅ 13 créés |
-| Validation | ✅ Complète |
-| Tests | ✅ 2/2 passants |
-| Polish | ✅ Complet |
+| Component | Status |
+|-----------|--------|
+| **Backend** | ✅ Production Ready |
+| API Build | ✅ 0 erreurs |
+| API Endpoints | ✅ 13+ créés |
+| Health Check | ✅ Opérationnel |
+| Swagger Docs | ✅ Disponible |
+| **Frontend** | ✅ Angular 19 ready (serve:dist) |
+| Angular Build | ✅ 0 erreurs (Node 24 compatible) |
+| Pages Implémentées | ✅ Dashboard, Members + contrats, Billing, Equipment, Access, Plans, Guests, Statistics |
+| Components | ✅ Standalone Angular 19 |
+| SCSS Styling | ✅ Design system global |
+| API Integration | ✅ Members, Contracts, Billing, Equipment, Access, Plans, Guests, Analytics |
+| **Infrastructure** | ✅ Prête |
+| Automation Scripts | ✅ PowerShell + Bash |
+| Docker Support | ✅ docker-compose |
+| Database | ✅ MySQL 8.0+ |
 
-**Status Final:** ✅ **Production Ready**
+**Status Global:** ✅ **Fullstack Opérationnel**
 
 ---
 
-## 🌐 Endpoints Principaux
+## 🌐 Frontend (Angular 19)
 
+**Angular 19 standalone**, compatible **Node 24** : utiliser `npm run build && npm run serve:dist` (choisit un port libre, CORS dev autorisé côté API en environnement Development).
+
+### 📦 Technologies
+- **Framework:** Angular 19.2 (Standalone Components)
+- **Styling:** SCSS + design system FitMove
+- **HTTP:** HttpClient + RxJS (gateway `core/services/api.service.ts`)
+- **Routing:** Standalone routes, layout header/sidebar
+
+### ✅ Couverture actuelle
+- Membres + contrats (CRUD, freeze/renew)
+- Billing (détail, paiement, génération)
+- Equipment (liste + tickets maintenance, filtres club/statut)
+- Access control (member/guest check)
+- Plans/Options, Clubs, Guests
+- Analytics (risks, frequency, options, health)
+- Dashboard / Classes / Schedule connectés aux APIs
+- Exercices/meal/workout/messages/reports/settings : démo/placeholder
+
+### 🏗️ Structure Frontend (résumé)
 ```
-GET    /api/members              # Lister
-GET    /api/members/{id}         # Détails
-POST   /api/members              # Créer
+frontend/
+├── src/app/
+│   ├── app.routes.ts
+│   ├── app.config.ts
+│   ├── layout/           # wrapper + nav
+│   ├── core/             # services + models
+│   └── pages/            # domaines (members, billing, equipment, access, plans, guests, analytics…)
+└── package.json          # scripts (build, serve:dist)
+```
 
-GET    /api/contracts/{id}       # Détails
-GET    /api/billing/invoices/{id}# Détails
+### 🚀 Quick Start (Frontend)
+```bash
+cd frontend
+npm install
+npm run build && npm run serve:dist   # sert dist/ avec http-server, port libre dès 4200
+```
 
-GET    /health                   # Health check
-GET    /swagger                  # Documentation interactive
+### 🎨 Design System
+
+Global SCSS variables with consistent theming:
+```scss
+--primary-color: #6366f1
+--secondary-color: #8b5cf6
+--success-color: #10b981
+--danger-color: #ef4444
+--warning-color: #f59e0b
+```
+
+Responsive grid layouts, card components, tables, and badges included.
+
+### 🔌 API Integration
+
+All API calls go through **ApiService** (`src/app/core/services/api.service.ts`):
+
+```typescript
+// Example usage in components
+constructor(private apiService: ApiService) {}
+
+ngOnInit() {
+  this.apiService.getMembers().subscribe(
+    data => this.members = data,
+    error => console.error(error)
+  );
+}
+```
+
+**Configured API URL:** `https://localhost:7001/api`
+
+### 📱 Responsive Design
+
+- Mobile-first SCSS breakpoints
+- Collapsible sidebar navigation
+- Mobile-friendly tables and cards
+- Touch-optimized buttons
+
+### 🔧 Troubleshooting
+
+**Port 4200 in use?**
+```bash
+# Run on different port
+ng serve --port 4300
+```
+
+**CORS issues?**
+Ensure backend has CORS enabled for `http://localhost:4200`
+
+**Module not found?**
+```bash
+cd frontend && npm install
 ```
 
 ---
@@ -171,6 +285,14 @@ Tous les guides sont dans le dossier [`docs/`](docs/) :
 cd scripts\Launch
 .\launch.ps1 run
 
+# Frontend only
+cd scripts\Launch
+.\launch.ps1 frontend
+
+# Fullstack
+cd scripts\Launch
+.\launch.ps1 fullstack
+
 # Mac/Linux
 cd scripts/Launch && ./launch.sh run
 
@@ -178,7 +300,10 @@ cd scripts/Launch && ./launch.sh run
 cd scripts\Docker && docker compose up --build
 ```
 
-Puis ouvre: https://localhost:5275/swagger
+Puis ouvre:
+- API Swagger: https://localhost:7001/swagger
+- Frontend: http://localhost:4200
+- Fullstack: http://localhost:4200 (avec backend auto)
 
 ---
 

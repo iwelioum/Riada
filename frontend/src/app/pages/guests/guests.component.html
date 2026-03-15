@@ -1,0 +1,53 @@
+<div class="guests-container">
+  <div class="page-header">
+    <div>
+      <h2>Guests</h2>
+      <p class="text-muted">Invités et passages accompagnés.</p>
+    </div>
+  </div>
+
+  <div class="form-card">
+    <h3>Register guest</h3>
+    <div class="form-grid">
+      <label>Sponsor member ID
+        <input type="number" [(ngModel)]="form.sponsorMemberId">
+      </label>
+      <label>First name
+        <input type="text" [(ngModel)]="form.firstName">
+      </label>
+      <label>Last name
+        <input type="text" [(ngModel)]="form.lastName">
+      </label>
+      <label>Email
+        <input type="email" [(ngModel)]="form.email">
+      </label>
+      <label>Date of birth
+        <input type="date" [(ngModel)]="form.dateOfBirth">
+      </label>
+    </div>
+    <button class="btn btn-primary" (click)="registerGuest()">Register</button>
+  </div>
+
+  <div class="table-section">
+    <div class="loading" *ngIf="loading">Loading guests...</div>
+    <table *ngIf="!loading && guests.length">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let guest of guests">
+          <td>{{ guest.firstName }} {{ guest.lastName }}</td>
+          <td>{{ guest.email || '—' }}</td>
+          <td>{{ guest.status }}</td>
+          <td><button class="btn btn-secondary" (click)="banGuest(guest.id)">Ban</button></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="empty-state" *ngIf="!loading && !guests.length">No guests registered.</div>
+  </div>
+</div>

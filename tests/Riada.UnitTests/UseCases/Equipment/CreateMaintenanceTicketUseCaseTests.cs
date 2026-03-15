@@ -2,6 +2,8 @@ using FluentAssertions;
 using Moq;
 using Xunit;
 using Riada.Domain.Interfaces.Repositories;
+using Riada.Domain.Enums;
+using ClubEquipment = Riada.Domain.Entities.ClubManagement.Equipment;
 using Riada.Domain.Entities.ClubManagement;
 
 namespace Riada.UnitTests.UseCases.Equipment;
@@ -21,7 +23,7 @@ public class CreateMaintenanceTicketUseCaseTests
     public async Task CreateTicket_WithValidData_ShouldSucceed()
     {
         // Arrange
-        var equipment = new Equipment { Id = 1, Name = "Treadmill A", Status = "Active" };
+        var equipment = new ClubEquipment { Id = 1, Name = "Treadmill A", Status = EquipmentStatus.InService };
 
         _equipmentRepositoryMock
             .Setup(r => r.GetByIdAsync(1u, It.IsAny<CancellationToken>()))
@@ -32,7 +34,7 @@ public class CreateMaintenanceTicketUseCaseTests
 
         // Assert
         result.Should().NotBeNull();
-        result!.Status.Should().Be("Active");
+        result!.Status.Should().Be(EquipmentStatus.InService);
     }
 
     [Fact]
@@ -42,7 +44,9 @@ public class CreateMaintenanceTicketUseCaseTests
         var priority = "InvalidPriority";
 
         // Act & Assert
-        priority.Should().NotBeOneOf("Low", "Medium", "High");
+        priority.Should().NotBe("Low");
+        priority.Should().NotBe("Medium");
+        priority.Should().NotBe("High");
     }
 
     [Fact]
@@ -51,7 +55,7 @@ public class CreateMaintenanceTicketUseCaseTests
         // Arrange
         _equipmentRepositoryMock
             .Setup(r => r.GetByIdAsync(999u, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Equipment?)null);
+            .ReturnsAsync((ClubEquipment?)null);
 
         // Act
         var result = await _equipmentRepositoryMock.Object.GetByIdAsync(999u);

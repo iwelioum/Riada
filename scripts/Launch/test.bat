@@ -10,6 +10,7 @@ setlocal enabledelayedexpansion
 
 set "TESTS_PASSED=0"
 set "TESTS_FAILED=0"
+set "TOTAL_TESTS=10"
 set "ROOT_DIR=%~dp0..\..\"
 set "NO_PAUSE=0"
 if /I "%~1"=="--no-pause" set "NO_PAUSE=1"
@@ -65,7 +66,27 @@ if exist "%ROOT_DIR%src\Riada.API\" (
   set /a TESTS_FAILED+=1
 )
 
-echo Test 6: dotnet is installed
+echo Test 6: frontend\package.json exists
+if exist "%ROOT_DIR%frontend\package.json" (
+  echo   PASS
+  set /a TESTS_PASSED+=1
+) else (
+  echo   FAIL
+  set /a TESTS_FAILED+=1
+)
+
+echo Test 7: npm is installed
+npm --version >nul 2>&1
+if errorlevel 1 (
+  echo   FAIL
+  set /a TESTS_FAILED+=1
+) else (
+  for /f "tokens=*" %%i in ('npm --version') do set "NPM_VER=%%i"
+  echo   PASS - Version: !NPM_VER!
+  set /a TESTS_PASSED+=1
+)
+
+echo Test 8: dotnet is installed
 dotnet --version >nul 2>&1
 if errorlevel 1 (
   echo   FAIL
@@ -76,7 +97,7 @@ if errorlevel 1 (
   set /a TESTS_PASSED+=1
 )
 
-echo Test 7: ASP.NET Core runtime 8.x is installed
+echo Test 9: ASP.NET Core runtime 8.x is installed
 dotnet --list-runtimes | findstr /R /C:"Microsoft\.AspNetCore\.App 8\." >nul 2>&1
 if errorlevel 1 (
   echo   FAIL - Missing Microsoft.AspNetCore.App 8.x
@@ -87,7 +108,7 @@ if errorlevel 1 (
   set /a TESTS_PASSED+=1
 )
 
-echo Test 8: Riada.API process is not already running
+echo Test 10: Riada.API process is not already running
 tasklist /FI "IMAGENAME eq Riada.API.exe" 2>nul | find /I "Riada.API.exe" >nul
 if errorlevel 1 (
   echo   PASS
@@ -103,8 +124,8 @@ echo ===========================================================================
 echo TEST SUMMARY
 echo ============================================================================
 echo.
-echo Passed: !TESTS_PASSED!/8
-echo Failed: !TESTS_FAILED!/8
+echo Passed: !TESTS_PASSED!/!TOTAL_TESTS!
+echo Failed: !TESTS_FAILED!/!TOTAL_TESTS!
 echo.
 
 if !TESTS_FAILED! EQU 0 (

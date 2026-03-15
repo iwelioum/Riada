@@ -7,7 +7,7 @@
 
 param(
     [Parameter(Position = 0)]
-    [ValidateSet('run', 'build-only', 'test-only', 'release', 'docker', 'clean', 'health', 'help', '')]
+    [ValidateSet('run', 'build-only', 'test-only', 'release', 'docker', 'clean', 'health', 'frontend', 'frontend-build', 'fullstack', 'help', '')]
     [string]$Command = 'run',
 
     [switch]$VerboseOutput,
@@ -22,13 +22,18 @@ $ScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $script:Config = @{
     ProjectRoot = [System.IO.Path]::GetFullPath((Join-Path $ScriptRoot '..\..'))
     ApiProject  = [System.IO.Path]::GetFullPath((Join-Path $ScriptRoot '..\..\src\Riada.API'))
+    ApiCsproj   = [System.IO.Path]::GetFullPath((Join-Path $ScriptRoot '..\..\src\Riada.API\Riada.API.csproj'))
     Solution    = [System.IO.Path]::GetFullPath((Join-Path $ScriptRoot '..\..\Riada.sln'))
     UnitTests   = [System.IO.Path]::GetFullPath((Join-Path $ScriptRoot '..\..\tests\Riada.UnitTests\Riada.UnitTests.csproj'))
-    ApiPort     = 5275
-    ApiUrl      = 'https://localhost:5275'
-    SwaggerUrl  = 'https://localhost:5275/swagger'
-    HealthUrl   = 'https://localhost:5275/health'
-    RunUrls     = @('https://localhost:5275', 'http://localhost:5174')
+    FrontendProject = [System.IO.Path]::GetFullPath((Join-Path $ScriptRoot '..\..\frontend'))
+    FrontendPackageJson = [System.IO.Path]::GetFullPath((Join-Path $ScriptRoot '..\..\frontend\package.json'))
+    ApiPort     = 7001
+    ApiUrl      = 'https://localhost:7001'
+    SwaggerUrl  = 'https://localhost:7001/swagger'
+    HealthUrl   = 'https://localhost:7001/health'
+    FrontendPort = 4200
+    FrontendUrl  = 'http://localhost:4200'
+    RunUrls     = @('https://localhost:7001', 'http://localhost:5001')
 }
 
 function Update-UrlsFromLaunchSettings {
@@ -79,10 +84,13 @@ USAGE:
   .\launch.ps1 [command] [options]
 
 COMMANDS:
-  run          Restore, build, test, and launch the API (default)
-  build-only   Restore and build only
+  run          Restore, build API, and launch the API (default)
+  build-only   Restore and build API only
   test-only    Restore, build, and run unit tests
-  release      Restore and build in Release mode
+  release      Restore and build API in Release mode
+  frontend     Install deps if needed and launch frontend dev server
+  frontend-build Install deps if needed and build frontend
+  fullstack    Build backend API, then launch backend + frontend
   clean        Remove bin/ and obj/ folders
   health       Check API health endpoint
   docker       Start services with Docker Compose
@@ -163,7 +171,9 @@ function Get-PortFromUrl {
 function Invoke-Validation {
     param(
         [switch]$RequireAspNetRuntime,
-        [switch]$RequireApiProcessStopped
+        [switch]$RequireApiProcessStopped,
+        [switch]$RequireFrontendProject,
+        [switch]$RequireNpm
     )
 
     Write-Header 'VALIDATION'
@@ -176,7 +186,19 @@ function Invoke-Validation {
     Write-Success 'Solution file found'
 
     Require-Directory -Path $script:Config.ApiProject -Message "API project folder not found: $($script:Config.ApiProject)"
+    Require-File -Path $script:Config.ApiCsproj -Message "API project file not found: $($script:Config.ApiCsproj)"
     Write-Success 'API project folder found'
+
+    if ($RequireFrontendProject) {
+        Require-Directory -Path $script:Config.FrontendProject -Message "Frontend folder not found: $($script:Config.FrontendProject)"
+        Require-File -Path $script:Config.FrontendPackageJson -Message "Frontend package.json not found: $($script:Config.FrontendPackageJson)"
+        Write-Success 'Frontend project folder found'
+    }
+
+    if ($RequireNpm) {
+        Require-Program 'npm'
+        Write-Success "npm found: $(npm --version)"
+    }
 
     if ($RequireAspNetRuntime) {
         $tfm = Get-ApiTargetFramework
@@ -216,6 +238,10 @@ function Invoke-Validation {
         if ($null -ne $port -and -not (Test-PortAvailable -Port $port)) {
             Write-Warning-Log "Port $port is already in use ($url)."
         }
+    }
+
+    if ($RequireFrontendProject -and -not (Test-PortAvailable -Port $script:Config.FrontendPort)) {
+        Write-Warning-Log "Port $($script:Config.FrontendPort) is already in use ($($script:Config.FrontendUrl))."
     }
 
     if ($RequireApiProcessStopped) {
@@ -272,9 +298,9 @@ function Invoke-Build {
     )
 
     Write-Header "BUILD ($Configuration)"
-    Write-Info "Running dotnet build --configuration $Configuration..."
+    Write-Info "Running dotnet build $($script:Config.ApiCsproj) --configuration $Configuration..."
 
-    & dotnet build $script:Config.Solution --configuration $Configuration
+    & dotnet build $script:Config.ApiCsproj --configuration $Configuration
     $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { $LASTEXITCODE }
     if ($exitCode -ne 0) {
         Write-Error-Log "Build failed (exit code: $exitCode)"
@@ -301,6 +327,113 @@ function Invoke-Test {
     }
 
     Write-Success 'All unit tests passed'
+}
+
+function Invoke-FrontendInstallIfNeeded {
+    $frontendNodeModules = Join-Path $script:Config.FrontendProject 'node_modules'
+    $httpServerBin = Join-Path $frontendNodeModules '.bin\http-server'
+    $angularCliInit = Join-Path $frontendNodeModules '@angular\cli\lib\init.js'
+    $needsInstall = -not (Test-Path -Path $frontendNodeModules -PathType Container) -or
+        -not (Test-Path -Path $httpServerBin -PathType Leaf) -or
+        -not (Test-Path -Path $angularCliInit -PathType Leaf)
+
+    if (-not $needsInstall) { return }
+
+    Write-Header 'FRONTEND INSTALL'
+    Write-Info "Installing/updating frontend dependencies in $($script:Config.FrontendProject)..."
+
+    Push-Location $script:Config.FrontendProject
+    try {
+        & npm install --ignore-scripts
+        $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { $LASTEXITCODE }
+        if ($exitCode -ne 0) {
+            Write-Error-Log "npm install failed (exit code: $exitCode)"
+            exit $exitCode
+        }
+    }
+    finally {
+        Pop-Location
+    }
+
+    Write-Success 'Frontend dependencies installed'
+}
+
+function Invoke-FrontendBuild {
+    Write-Header 'FRONTEND BUILD'
+    Invoke-FrontendInstallIfNeeded
+
+    Push-Location $script:Config.FrontendProject
+    try {
+        & npm run build
+        $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { $LASTEXITCODE }
+        if ($exitCode -ne 0) {
+            Write-Error-Log "Frontend build failed (exit code: $exitCode)"
+            exit $exitCode
+        }
+    }
+    finally {
+        Pop-Location
+    }
+
+    Write-Success 'Frontend build successful'
+}
+
+function Invoke-FrontendDev {
+    Write-Header 'FRONTEND DEV'
+    Invoke-FrontendInstallIfNeeded
+
+    $distPath = Join-Path $script:Config.FrontendProject 'dist\riada-frontend\browser'
+    $needsBuild = -not (Test-Path -Path $distPath -PathType Container)
+
+    Push-Location $script:Config.FrontendProject
+    try {
+        if ($needsBuild) {
+            Write-Info 'No production build found. Running npm run build...'
+            & npm run build
+            $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { $LASTEXITCODE }
+            if ($exitCode -ne 0) {
+                Write-Error-Log "Frontend build failed (exit code: $exitCode)"
+                exit $exitCode
+            }
+        }
+
+        Write-Info "Starting static frontend server on $($script:Config.FrontendUrl) from dist/..."
+        Write-Host 'Press Ctrl+C to stop the frontend server.'
+        Write-Host ''
+
+        & npm run serve:dist
+        $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { $LASTEXITCODE }
+        if ($exitCode -ne 0) {
+            Write-Error-Log "Frontend server failed (exit code: $exitCode)"
+            exit $exitCode
+        }
+    }
+    finally {
+        Pop-Location
+    }
+}
+
+function Invoke-Fullstack {
+    Write-Header 'FULLSTACK'
+    Invoke-FrontendInstallIfNeeded
+
+    $distPath = Join-Path $script:Config.FrontendProject 'dist\riada-frontend\browser'
+    $buildStep = if (Test-Path -Path $distPath -PathType Container) { '' } else { 'npm run build; ' }
+    $frontendCommand = "Set-Location -LiteralPath '$($script:Config.FrontendProject)'; $buildStep npm run serve:dist"
+    $frontendProcess = Start-Process -FilePath 'powershell' -ArgumentList @('-NoProfile', '-NoExit', '-ExecutionPolicy', 'Bypass', '-Command', $frontendCommand) -PassThru
+    Write-Success "Frontend started in separate window (PID: $($frontendProcess.Id))"
+    Write-Info "Frontend URL: $($script:Config.FrontendUrl)"
+    Write-Info "Launching API in current window..."
+
+    try {
+        Invoke-Launch
+    }
+    finally {
+        if ($frontendProcess -and -not $frontendProcess.HasExited) {
+            Write-Info "Stopping frontend process PID $($frontendProcess.Id)..."
+            Stop-Process -Id $frontendProcess.Id -Force -ErrorAction SilentlyContinue
+        }
+    }
 }
 
 function Invoke-Launch {
@@ -387,9 +520,15 @@ Write-Header 'RIADA API AUTOMATION'
 
 try {
     if (-not $SkipValidation -and $Command -ne 'help') {
-        $requireAspNetRuntime = @('run', '', 'health') -contains $Command
+        $requireAspNetRuntime = @('run', '', 'health', 'fullstack') -contains $Command
         $requireApiProcessStopped = @('run', '', 'build-only', 'test-only', 'release', 'clean') -contains $Command
-        Invoke-Validation -RequireAspNetRuntime:$requireAspNetRuntime -RequireApiProcessStopped:$requireApiProcessStopped
+        $requireFrontendProject = @('frontend', 'frontend-build', 'fullstack') -contains $Command
+        $requireNpm = @('frontend', 'frontend-build', 'fullstack') -contains $Command
+        Invoke-Validation `
+            -RequireAspNetRuntime:$requireAspNetRuntime `
+            -RequireApiProcessStopped:$requireApiProcessStopped `
+            -RequireFrontendProject:$requireFrontendProject `
+            -RequireNpm:$requireNpm
     }
 
     switch ($Command) {
@@ -422,6 +561,36 @@ try {
             Invoke-Build -Configuration 'Release'
             Write-Success 'Release build completed'
         }
+        'frontend-build' {
+            Invoke-FrontendBuild
+        }
+        'frontend' {
+            Invoke-FrontendDev
+        }
+        'fullstack' {
+            $runningApi = Get-RunningApiProcesses
+            if ($runningApi.Count -gt 0) {
+                $runningPids = ($runningApi | Select-Object -ExpandProperty Id) -join ', '
+                Write-Warning-Log "Riada.API is already running (PID: $runningPids). Reusing existing API instance."
+
+                if (-not (Test-PortAvailable -Port $script:Config.FrontendPort)) {
+                    Write-Warning-Log "Frontend port $($script:Config.FrontendPort) is already in use. Reusing existing frontend instance."
+                    Write-Host "API URL: $($script:Config.ApiUrl)"
+                    Write-Host "Frontend URL: $($script:Config.FrontendUrl)"
+                    break
+                }
+
+                Invoke-FrontendDev
+                break
+            }
+
+            Invoke-Restore
+            if (-not $SkipClean) {
+                Invoke-Clean
+            }
+            Invoke-Build -Configuration 'Debug'
+            Invoke-Fullstack
+        }
         'health' {
             Invoke-HealthCheck
         }
@@ -434,7 +603,6 @@ try {
                 Invoke-Clean
             }
             Invoke-Build -Configuration 'Debug'
-            Invoke-Test
             Invoke-Launch
         }
         default {

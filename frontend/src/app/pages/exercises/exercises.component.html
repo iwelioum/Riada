@@ -1,0 +1,21 @@
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="eyebrow">Library</div>
+      <h1>Exercises</h1>
+      <p class="text-muted">Catalogue des mouvements et plans rapides.</p>
+    </div>
+    <button class="pill solid">Ajouter</button>
+  </div>
+
+  <div class="grid-3">
+    <div class="card exercise" *ngFor="let ex of exercises">
+      <div class="title">{{ ex.name }}</div>
+      <div class="text-muted">{{ ex.muscle }}</div>
+      <div class="tags">
+        <span class="pill muted">{{ ex.difficulty }}</span>
+        <span class="pill muted">{{ ex.duration }}</span>
+      </div>
+    </div>
+  </div>
+</div>
