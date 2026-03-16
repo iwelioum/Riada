@@ -27,7 +27,12 @@
 - ✅ Revoked access tokens are rejected during JWT validation
 - ✅ Added per-user auth abuse throttling on `/api/auth/token` and `/api/auth/refresh`
 - ✅ Added search/filter pagination bounds on exposed query endpoints (`members`, `guests`, `analytics`, `courses`, `equipment`)
-- ⚠️ Residual risks: distributed revocation synchronization (multi-node) and frontend HttpOnly cookie migration remain open
+
+**Cycle 9 Remediation Update (2026-03-16):**
+- ✅ Frontend token handling migrated away from `localStorage` for JWTs
+- ✅ Auth API now issues `HttpOnly` + `SameSite=Strict` cookie pair for access/refresh tokens
+- ✅ JWT bearer pipeline accepts secure auth cookies (`withCredentials`) in addition to bearer headers
+- ⚠️ Residual risk: distributed revocation synchronization across multi-node deployments remains open
 
 ### Key Findings
 1. ✅ **Core Authentication:** JWT-based system with proper signature validation

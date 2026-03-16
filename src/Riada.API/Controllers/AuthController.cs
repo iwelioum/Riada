@@ -12,16 +12,32 @@ public class AuthController : ControllerBase
 {
     private readonly ITokenService _tokenService;
     private readonly IAuthAbuseProtectionService _abuseProtectionService;
+    private readonly IWebHostEnvironment _environment;
     private readonly ILogger<AuthController> _logger;
+    private readonly string _accessTokenCookieName;
+    private readonly string _refreshTokenCookieName;
+    private readonly int _accessTokenExpirationMinutes;
+    private readonly int _refreshTokenExpirationDays;
 
     public AuthController(
         ITokenService tokenService,
         IAuthAbuseProtectionService abuseProtectionService,
+        IConfiguration configuration,
+        IWebHostEnvironment environment,
         ILogger<AuthController> logger)
     {
         _tokenService = tokenService ?? throw new ArgumentNullException(nameof(tokenService));
         _abuseProtectionService = abuseProtectionService ?? throw new ArgumentNullException(nameof(abuseProtectionService));
+        ArgumentNullException.ThrowIfNull(configuration);
+        _environment = environment ?? throw new ArgumentNullException(nameof(environment));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+        _accessTokenCookieName = AuthCookieSettings.GetAccessTokenCookieName(configuration);
+        _refreshTokenCookieName = AuthCookieSettings.GetRefreshTokenCookieName(configuration);
+
+        var jwtConfig = configuration.GetSection("Jwt");
+        _accessTokenExpirationMinutes = ReadPositiveInt(jwtConfig["AccessTokenExpirationMinutes"], fallback: 60);
+        _refreshTokenExpirationDays = ReadPositiveInt(jwtConfig["RefreshTokenExpirationDays"], fallback: 7);
     }
 
     /// <summary>
@@ -65,6 +81,7 @@ public class AuthController : ControllerBase
         try
         {
             var tokenResponse = _tokenService.GenerateToken(normalizedUserId, normalizedRoles);
+            WriteAuthCookies(tokenResponse.AccessToken, tokenResponse.RefreshToken);
             return Ok(tokenResponse);
         }
         catch (ArgumentException ex)
@@ -80,12 +97,18 @@ public class AuthController : ControllerBase
     [HttpPost("refresh")]
     [AllowAnonymous]
     public IActionResult RefreshToken(
-        [FromBody] RefreshTokenRequest request)
+        [FromBody] RefreshTokenRequest? request = null)
     {
-        if (request is null || string.IsNullOrWhiteSpace(request.RefreshToken))
+        var refreshToken = request?.RefreshToken?.Trim();
+        if (string.IsNullOrWhiteSpace(refreshToken)
+            && Request.Cookies.TryGetValue(_refreshTokenCookieName, out var cookieRefreshToken))
+        {
+            refreshToken = cookieRefreshToken?.Trim();
+        }
+
+        if (string.IsNullOrWhiteSpace(refreshToken))
             return BadRequest("Refresh token is required.");
 
-        var refreshToken = request.RefreshToken.Trim();
         var subject = _tokenService.GetUserId(refreshToken) ?? InputSanitizer.HashSensitiveData(refreshToken);
 
         if (!_abuseProtectionService.IsRefreshAllowed(subject, out var retryAfter))
@@ -98,6 +121,7 @@ public class AuthController : ControllerBase
         try
         {
             var response = _tokenService.RefreshToken(refreshToken);
+            WriteAuthCookies(response.AccessToken, response.RefreshToken);
             return Ok(response);
         }
         catch (ArgumentException ex)
@@ -124,16 +148,25 @@ public class AuthController : ControllerBase
     [Authorize]
     public IActionResult Logout([FromBody] LogoutRequest? request = null)
     {
-        var accessToken = ExtractBearerToken();
+        var accessToken = ExtractAccessToken();
         if (string.IsNullOrWhiteSpace(accessToken))
-            return BadRequest("Access token is required in Authorization header.");
+            return BadRequest("Access token is required in Authorization header or secure cookie.");
 
         try
         {
             _tokenService.RevokeToken(accessToken);
 
-            if (!string.IsNullOrWhiteSpace(request?.RefreshToken))
-                _tokenService.RevokeToken(request.RefreshToken.Trim());
+            var refreshToken = request?.RefreshToken?.Trim();
+            if (string.IsNullOrWhiteSpace(refreshToken)
+                && Request.Cookies.TryGetValue(_refreshTokenCookieName, out var cookieRefreshToken))
+            {
+                refreshToken = cookieRefreshToken?.Trim();
+            }
+
+            if (!string.IsNullOrWhiteSpace(refreshToken))
+                _tokenService.RevokeToken(refreshToken);
+
+            ClearAuthCookies();
 
             var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "unknown";
             _logger.LogInformation("User {UserId} logged out and token revocation applied", userId);
@@ -163,19 +196,61 @@ public class AuthController : ControllerBase
         return StatusCode(StatusCodes.Status429TooManyRequests, message);
     }
 
-    private string? ExtractBearerToken()
+    private string? ExtractAccessToken()
     {
-        if (!Request.Headers.TryGetValue("Authorization", out var authorizationHeader))
-            return null;
+        if (Request.Headers.TryGetValue("Authorization", out var authorizationHeader))
+        {
+            var rawHeader = authorizationHeader.ToString();
+            const string bearerPrefix = "Bearer ";
+            if (rawHeader.StartsWith(bearerPrefix, StringComparison.OrdinalIgnoreCase))
+            {
+                var bearerToken = rawHeader[bearerPrefix.Length..].Trim();
+                if (!string.IsNullOrWhiteSpace(bearerToken))
+                    return bearerToken;
+            }
+        }
 
-        var rawHeader = authorizationHeader.ToString();
-        const string bearerPrefix = "Bearer ";
-        return rawHeader.StartsWith(bearerPrefix, StringComparison.OrdinalIgnoreCase)
-            ? rawHeader[bearerPrefix.Length..].Trim()
+        return Request.Cookies.TryGetValue(_accessTokenCookieName, out var cookieToken)
+            ? cookieToken?.Trim()
             : null;
     }
+
+    private void WriteAuthCookies(string accessToken, string refreshToken)
+    {
+        Response.Cookies.Append(
+            _accessTokenCookieName,
+            accessToken,
+            CreateCookieOptions(TimeSpan.FromMinutes(_accessTokenExpirationMinutes)));
+
+        Response.Cookies.Append(
+            _refreshTokenCookieName,
+            refreshToken,
+            CreateCookieOptions(TimeSpan.FromDays(_refreshTokenExpirationDays)));
+    }
+
+    private void ClearAuthCookies()
+    {
+        var deleteOptions = CreateCookieOptions(TimeSpan.Zero);
+        Response.Cookies.Delete(_accessTokenCookieName, deleteOptions);
+        Response.Cookies.Delete(_refreshTokenCookieName, deleteOptions);
+    }
+
+    private CookieOptions CreateCookieOptions(TimeSpan lifetime) => new()
+    {
+        HttpOnly = true,
+        Secure = ShouldUseSecureCookies(),
+        SameSite = SameSiteMode.Strict,
+        Path = "/",
+        IsEssential = true,
+        Expires = DateTimeOffset.UtcNow.Add(lifetime)
+    };
+
+    private bool ShouldUseSecureCookies() => !_environment.IsDevelopment() || Request.IsHttps;
+
+    private static int ReadPositiveInt(string? rawValue, int fallback) =>
+        int.TryParse(rawValue, out var parsed) && parsed > 0 ? parsed : fallback;
 }
 
 public record GenerateTokenRequest(string UserId, string[] Roles);
-public record RefreshTokenRequest(string RefreshToken);
+public record RefreshTokenRequest(string? RefreshToken);
 public record LogoutRequest(string? RefreshToken);

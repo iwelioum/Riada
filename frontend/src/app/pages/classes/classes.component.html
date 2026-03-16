@@ -27,6 +27,7 @@
   <div class="success" *ngIf="bookingSuccess">{{ bookingSuccess }}</div>
 
   <div class="loading" *ngIf="loading">Loading sessions...</div>
+  @let hasSessions = sessions.length > 0;
 
   <div class="card session-card" *ngIf="selectedBookingSession as selectedSession">
     <div class="session-title">Booking: {{ selectedSession.courseName }}</div>
@@ -40,8 +41,10 @@
     </div>
   </div>
 
-  <div class="grid-2" *ngIf="!loading && sessions.length">
+  <div class="grid-2" *ngIf="!loading && hasSessions">
     <div class="card session-card" *ngFor="let session of sessions">
+      @let canBookSession = canBook(session);
+      @let sessionSelected = isBooking(session.id);
       <div class="flex-between">
         <div>
           <div class="session-title">{{ session.courseName }}</div>
@@ -60,8 +63,8 @@
       </div>
 
       <div class="session-footer">
-        <button class="pill solid" (click)="openBookingForm(session.id)" [disabled]="bookingInProgress || !canBook(session)">
-          {{ isBooking(session.id) ? 'Selected for booking' : (canBook(session) ? 'Book member' : 'Full') }}
+        <button class="pill solid" (click)="openBookingForm(session.id)" [disabled]="bookingInProgress || !canBookSession">
+          {{ sessionSelected ? 'Selected for booking' : (canBookSession ? 'Book member' : 'Full') }}
         </button>
         <a class="pill ghost details-link" [routerLink]="['/classes', session.id]">Details</a>
         <span class="text-muted">{{ session.occupancyPercent }}% occupied</span>
@@ -69,7 +72,7 @@
     </div>
   </div>
 
-  <div class="empty" *ngIf="!loading && hasLoadedSessions && !sessions.length && !pageError">
+  <div class="empty" *ngIf="!loading && hasLoadedSessions && !hasSessions && !pageError">
     {{ clubId ? 'No classes are scheduled for the selected period.' : 'Select a club to load classes.' }}
   </div>
 </div>

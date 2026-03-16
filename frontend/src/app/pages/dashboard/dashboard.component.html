@@ -14,11 +14,16 @@
     </div>
   </div>
 
+  @let hasPartialErrors = !errorMessage && partialErrors.length > 0;
+  @let firstUpcomingSessions = firstSessions();
+  @let upcomingSessionsCount = upcomingSessions.length;
+  @let riskAlertsCount = riskAlerts.length;
+
   <div class="status info" *ngIf="clubsLoading">Refreshing clubs and metrics...</div>
   <div class="status warn" *ngIf="clubsErrorMessage">{{ clubsErrorMessage }}</div>
   <div class="status info" *ngIf="infoMessage">{{ infoMessage }}</div>
   <div class="status error" *ngIf="errorMessage">{{ errorMessage }}</div>
-  <div class="status warn" *ngIf="!errorMessage && partialErrors.length">
+  <div class="status warn" *ngIf="hasPartialErrors">
     <div>Some widgets could not be refreshed:</div>
     <ul>
       <li *ngFor="let issue of partialErrors; trackBy: trackByError">{{ issue }}</li>
@@ -59,11 +64,11 @@
             <h3>Sessions à venir</h3>
             <p class="text-muted">Priorisez les créneaux qui se remplissent vite.</p>
           </div>
-          <span class="pill muted">{{ upcomingSessions.length }} sessions</span>
+          <span class="pill muted">{{ upcomingSessionsCount }} sessions</span>
         </div>
 
-        <div class="session-list" *ngIf="firstSessions().length; else noSessions">
-          <div class="session" *ngFor="let session of firstSessions(); trackBy: trackBySession">
+        <div class="session-list" *ngIf="firstUpcomingSessions.length; else noSessions">
+          <div class="session" *ngFor="let session of firstUpcomingSessions; trackBy: trackBySession">
             <div>
               <div class="session-name">{{ session.courseName }}</div>
               <div class="text-muted">{{ session.instructorName }} · {{ session.clubName }}</div>
@@ -82,7 +87,7 @@
             <h3>Alertes risque</h3>
             <p class="text-muted">Members à contacter en priorité.</p>
           </div>
-          <span class="pill muted">{{ riskAlerts.length }} alertes</span>
+          <span class="pill muted">{{ riskAlertsCount }} alertes</span>
         </div>
 
         <div class="risk-list" *ngIf="riskAlerts.length; else noRisk">

@@ -1,4 +1,5 @@
 using System;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using HealthChecks.UI.Client;
@@ -32,6 +33,7 @@ builder.Services.AddRateLimiting(builder.Configuration);
 // ── Authentication (JWT Bearer with environment-based secrets) ──
 var jwtConfig = builder.Configuration.GetSection("Jwt");
 var jwtSecret = JwtSecretProvider.GetSecretKey();
+var accessTokenCookieName = AuthCookieSettings.GetAccessTokenCookieName(builder.Configuration);
 
 // Register token service for JWT generation and refresh
 builder.Services.AddSingleton<ITokenService>(sp => 
@@ -56,17 +58,39 @@ builder.Services
 
         options.Events = new JwtBearerEvents
         {
+            OnMessageReceived = context =>
+            {
+                if (string.IsNullOrWhiteSpace(context.Token)
+                    && context.Request.Cookies.TryGetValue(accessTokenCookieName, out var cookieToken)
+                    && !string.IsNullOrWhiteSpace(cookieToken))
+                {
+                    context.Token = cookieToken.Trim();
+                }
+
+                return Task.CompletedTask;
+            },
             OnTokenValidated = context =>
             {
-                if (!context.HttpContext.Request.Headers.TryGetValue("Authorization", out var authorizationHeader))
-                    return Task.CompletedTask;
+                var token = (context.SecurityToken as JwtSecurityToken)?.RawData;
 
-                var rawHeader = authorizationHeader.ToString();
-                const string bearerPrefix = "Bearer ";
-                if (!rawHeader.StartsWith(bearerPrefix, StringComparison.OrdinalIgnoreCase))
-                    return Task.CompletedTask;
+                if (string.IsNullOrWhiteSpace(token))
+                {
+                    if (context.HttpContext.Request.Headers.TryGetValue("Authorization", out var authorizationHeader))
+                    {
+                        var rawHeader = authorizationHeader.ToString();
+                        const string bearerPrefix = "Bearer ";
 
-                var token = rawHeader[bearerPrefix.Length..].Trim();
+                        if (rawHeader.StartsWith(bearerPrefix, StringComparison.OrdinalIgnoreCase))
+                            token = rawHeader[bearerPrefix.Length..].Trim();
+                    }
+                }
+
+                if (string.IsNullOrWhiteSpace(token)
+                    && context.HttpContext.Request.Cookies.TryGetValue(accessTokenCookieName, out var cookieToken))
+                {
+                    token = cookieToken.Trim();
+                }
+
                 if (string.IsNullOrWhiteSpace(token))
                     return Task.CompletedTask;
 

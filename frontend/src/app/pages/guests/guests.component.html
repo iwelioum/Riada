@@ -33,10 +33,11 @@
 
   <div class="error" *ngIf="errorMessage">{{ errorMessage }}</div>
   <div class="success" *ngIf="successMessage">{{ successMessage }}</div>
+  @let hasGuests = guests.length > 0;
 
   <div class="table-section">
     <div class="loading" *ngIf="loading">Loading guests...</div>
-    <table *ngIf="!loading && guests.length">
+    <table *ngIf="!loading && hasGuests">
       <thead>
         <tr>
           <th>Name</th>
@@ -48,26 +49,28 @@
       </thead>
       <tbody>
         <tr *ngFor="let guest of guests; trackBy: trackByGuest">
+          @let canBan = canBanGuest(guest);
+          @let isBanningCurrent = banningGuestId === guest.id;
           <td>{{ guest.firstName }} {{ guest.lastName }}</td>
           <td>{{ guest.sponsorName || guest.sponsorMemberId || '—' }}</td>
           <td>{{ guest.dateOfBirth | date:'mediumDate' }}</td>
           <td>{{ guest.status }}</td>
           <td>
             <ng-container *ngIf="pendingBanId !== guest.id; else confirmBan">
-              <button class="btn btn-secondary" (click)="requestBanGuest(guest.id)" [disabled]="banningGuestId !== null || !canBanGuest(guest)">
-                {{ canBanGuest(guest) ? 'Ban' : 'Banned' }}
+              <button class="btn btn-secondary" (click)="requestBanGuest(guest.id)" [disabled]="banningGuestId !== null || !canBan">
+                {{ canBan ? 'Ban' : 'Banned' }}
               </button>
             </ng-container>
             <ng-template #confirmBan>
-              <button class="btn btn-secondary" (click)="banGuest(guest.id)" [disabled]="banningGuestId === guest.id">
-                {{ banningGuestId === guest.id ? 'Banning...' : 'Confirm' }}
+              <button class="btn btn-secondary" (click)="banGuest(guest.id)" [disabled]="isBanningCurrent">
+                {{ isBanningCurrent ? 'Banning...' : 'Confirm' }}
               </button>
-              <button class="btn btn-light" (click)="cancelBanGuest()" [disabled]="banningGuestId === guest.id">Cancel</button>
+              <button class="btn btn-light" (click)="cancelBanGuest()" [disabled]="isBanningCurrent">Cancel</button>
             </ng-template>
           </td>
         </tr>
       </tbody>
     </table>
-    <div class="empty-state" *ngIf="!loading && hasLoadedGuests && !guests.length">No guests registered.</div>
+    <div class="empty-state" *ngIf="!loading && hasLoadedGuests && !hasGuests">No guests registered.</div>
   </div>
 </div>

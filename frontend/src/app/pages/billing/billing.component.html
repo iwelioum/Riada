@@ -77,8 +77,9 @@
   </div>
 
   <div class="loading" *ngIf="loading">Loading invoices...</div>
+  @let hasInvoices = invoices.length > 0;
   
-  <table *ngIf="!loading && invoices.length > 0">
+  <table *ngIf="!loading && hasInvoices">
     <thead>
       <tr>
         <th>Invoice ID</th>
@@ -93,6 +94,7 @@
     </thead>
     <tbody>
       <tr *ngFor="let invoice of invoices">
+        @let invoicePaid = invoice.status === 'Paid';
         <td>{{ invoice.id }}</td>
         <td>{{ invoice.invoiceNumber }}</td>
         <td>${{ invoice.amountInclTax | number:'1.2-2' }}</td>
@@ -105,16 +107,16 @@
         <td>{{ invoice.issuedOn | date:'short' }}</td>
         <td>{{ invoice.dueDate | date:'short' }}</td>
         <td>
-          <button class="btn btn-sm" (click)="openPaymentForm(invoice)" *ngIf="invoice.status !== 'Paid'" [disabled]="recordingPayment || generatingInvoice">
+          <button class="btn btn-sm" (click)="openPaymentForm(invoice)" *ngIf="!invoicePaid" [disabled]="recordingPayment || generatingInvoice">
             Record Payment
           </button>
-          <span *ngIf="invoice.status === 'Paid'" class="text-muted">Paid</span>
+          <span *ngIf="invoicePaid" class="text-muted">Paid</span>
         </td>
       </tr>
     </tbody>
   </table>
 
-  <div class="empty-state" *ngIf="!loading && hasLoadedInvoice && invoices.length === 0 && invoiceLookupAttempted && !lastError">
+  <div class="empty-state" *ngIf="!loading && hasLoadedInvoice && !hasInvoices && invoiceLookupAttempted && !lastError">
     <p>No invoices found.</p>
   </div>
 

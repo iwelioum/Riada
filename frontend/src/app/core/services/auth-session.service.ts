@@ -4,17 +4,30 @@ import { Injectable } from '@angular/core';
   providedIn: 'root'
 })
 export class AuthSessionService {
-  private readonly accessTokenStorageKey = 'riada.auth.accessToken';
+  private readonly sessionStateStorageKey = 'riada.auth.sessionActive';
 
+  /**
+   * JWTs are now handled via HttpOnly secure cookies on the API side.
+   * Keep this method for backward compatibility with existing call sites.
+   */
   getAccessToken(): string | null {
-    return localStorage.getItem(this.accessTokenStorageKey);
+    return null;
   }
 
   setAccessToken(token: string): void {
-    localStorage.setItem(this.accessTokenStorageKey, token);
+    if (token.trim().length === 0) {
+      sessionStorage.removeItem(this.sessionStateStorageKey);
+      return;
+    }
+
+    sessionStorage.setItem(this.sessionStateStorageKey, '1');
   }
 
   clearAccessToken(): void {
-    localStorage.removeItem(this.accessTokenStorageKey);
+    sessionStorage.removeItem(this.sessionStateStorageKey);
+  }
+
+  hasActiveSession(): boolean {
+    return sessionStorage.getItem(this.sessionStateStorageKey) === '1';
   }
 }

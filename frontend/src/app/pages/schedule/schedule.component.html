@@ -24,8 +24,10 @@
   <div *ngIf="errorMessage" class="error">{{ errorMessage }}</div>
   <div *ngIf="lastUpdated" class="text-muted">Last refresh: {{ lastUpdated | date:'short' }}</div>
   <div *ngIf="loading" class="text-muted">Chargement du planning...</div>
-  <div *ngIf="!loading && hasLoadedSessions && !clubs.length" class="text-muted">No clubs available for schedule lookup.</div>
-  <div *ngIf="!loading && hasLoadedSessions && clubs.length && !grouped.length" class="text-muted">Aucune session planifiée.</div>
+  @let hasClubs = clubs.length > 0;
+  @let hasGroupedSessions = grouped.length > 0;
+  <div *ngIf="!loading && hasLoadedSessions && !hasClubs" class="text-muted">No clubs available for schedule lookup.</div>
+  <div *ngIf="!loading && hasLoadedSessions && hasClubs && !hasGroupedSessions" class="text-muted">Aucune session planifiée.</div>
 
   <div class="day-grid">
     <div class="card day" *ngFor="let day of grouped">
