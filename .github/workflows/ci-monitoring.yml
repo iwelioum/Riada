@@ -17,10 +17,18 @@ on:
       - 'docs/MONITORING_OPERABILITY.md'
       - '.github/workflows/ci-monitoring.yml'
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   monitoring:
     runs-on: ubuntu-latest
     name: Monitoring smoke checks
+    timeout-minutes: 15
 
     steps:
     - name: Checkout code

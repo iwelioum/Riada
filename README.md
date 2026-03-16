@@ -169,6 +169,17 @@ test.bat
 
 ---
 
+## 🔁 CI/CD Workflows
+
+Pipelines GitHub Actions actifs dans `.github/workflows/` :
+
+- `ci-dotnet.yml` : restore/build/tests .NET + publication d'artefacts
+- `ci-angular.yml` : build/tests Angular + artefacts de couverture
+- `ci-monitoring.yml` : checks monitoring DB/sécurité (mode CI-safe)
+- `ci-docker.yml` : build Docker avec cache Buildx, push GHCR sur `main`
+
+---
+
 ## 🌐 Frontend (Angular 19)
 
 **Angular 19 standalone**, compatible **Node 24** : utiliser `npm run build && npm run serve:dist` (choisit un port libre, CORS dev autorisé côté API en environnement Development).

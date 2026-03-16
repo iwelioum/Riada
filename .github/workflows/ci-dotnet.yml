@@ -1,6 +1,7 @@
 name: .NET CI
 
 on:
+  workflow_dispatch:
   push:
     branches: [ main, develop ]
     paths:
@@ -16,10 +17,18 @@ on:
       - 'Riada.sln'
       - '.github/workflows/ci-dotnet.yml'
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
-    name: Build & Test
+    name: Build, Test & Publish
+    timeout-minutes: 30
 
     steps:
     - name: Checkout code
@@ -32,36 +41,51 @@ jobs:
       with:
         dotnet-version: '8.x'
 
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/packages.lock.json', 'global.json') }}
+        restore-keys: |
+          nuget-${{ runner.os }}-
+
     - name: Restore NuGet packages
-      run: dotnet restore Riada.sln
+      run: dotnet restore Riada.sln --nologo
       timeout-minutes: 5
 
     - name: Build solution
-      run: dotnet build Riada.sln --configuration Release --no-restore
+      run: dotnet build Riada.sln --configuration Release --no-restore --nologo
       timeout-minutes: 10
 
     - name: Run unit tests
-      run: dotnet test tests/Riada.UnitTests/Riada.UnitTests.csproj --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --logger "trx;LogFileName=unit-test-results.trx"
+      run: dotnet test tests/Riada.UnitTests/Riada.UnitTests.csproj --configuration Release --no-build --nologo --verbosity normal --collect:"XPlat Code Coverage" --logger "trx;LogFileName=unit-test-results.trx"
       timeout-minutes: 10
 
     - name: Run integration tests
-      run: dotnet test tests/Riada.IntegrationTests/Riada.IntegrationTests.csproj --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --logger "trx;LogFileName=integration-test-results.trx"
+      run: dotnet test tests/Riada.IntegrationTests/Riada.IntegrationTests.csproj --configuration Release --no-build --nologo --verbosity normal --collect:"XPlat Code Coverage" --logger "trx;LogFileName=integration-test-results.trx"
       timeout-minutes: 15
+
+    - name: Publish API
+      run: dotnet publish src/Riada.API/Riada.API.csproj --configuration Release --no-build --nologo --output artifacts/publish
+      timeout-minutes: 5
 
     - name: Upload test results
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: test-results
-        path: '**/TestResults/**'
+        name: test-results-dotnet
+        path: |
+          **/TestResults/**/*.trx
+          **/TestResults/**/coverage.cobertura.xml
+        if-no-files-found: warn
         retention-days: 30
 
     - name: Publish coverage reports
       if: success()
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v5
       with:
         files: '**/coverage.cobertura.xml'
-        flags: unittests
+        flags: dotnet
         fail_ci_if_error: false
         verbose: true
 
@@ -70,5 +94,6 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: build-artifacts-dotnet
-        path: 'src/Riada.API/bin/Release/net8.0/publish'
+        path: artifacts/publish
+        if-no-files-found: error
         retention-days: 7
