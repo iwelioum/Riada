@@ -473,3 +473,80 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 - Frontend test/build gates remained green.
 
 ---
+
+## Cycle 4 — Security Hardening
+
+### [2026-03-16] SECURITY_SHIELD — Token Lifecycle + Auth Abuse + Query Bounds Hardening
+
+**PROBLEM:** Cycle 3 penetration outputs left practical medium/low gaps in token lifecycle revocation behavior, per-user auth abuse controls, and unbounded query parameters.
+
+**DECISION:** Implement low-risk backend hardening now without architecture-breaking auth redesigns, while documenting residual distributed/frontend gaps for next cycle.
+
+**IMPLEMENTATION:**
+- Added `POST /api/auth/logout` with explicit access/optional refresh revocation.
+- Upgraded JWT service to JTI-based revocation with persistent local backing store and runtime revocation checks in bearer token validation.
+- Added per-user auth throttling service for `/api/auth/token` and `/api/auth/refresh` with `Retry-After` responses.
+- Applied query hardening (`[Range]`, `[StringLength]`, enum/date guards) across members/guests/analytics/courses/equipment read endpoints plus use-case-level guardrails.
+- Audited SQL security/GDPR scripts and implemented:
+  - member deletion GDPR guard trigger in `sql/03_Triggers.sql`
+  - SSL + failed-login lock settings in `sql/07_Security.sql`
+
+**RESULTS:**
+- Medium finding (token lifecycle): mitigated with explicit logout + persistent revocation + middleware enforcement.
+- Medium finding (auth abuse): mitigated with per-user throttling layered over existing IP limits.
+- Low finding (search/filter bounds): mitigated with controller and use-case constraints.
+- Residual open risks intentionally tracked: distributed revocation/rate-limit state and frontend HttpOnly cookie migration.
+
+**REGRESSION TEST:**
+- `dotnet test Riada.sln --nologo` ✅ (79/79)
+
+---
+
+### [2026-03-16] DATABASE_MASTER — Trigger/GDPR Hardening + DB Monitoring Baseline
+
+**PROBLEM:** Cycle 4 required stronger database-side guardrails and operational visibility beyond static schema quality.
+
+**DECISION:** Add a GDPR deletion guard trigger and pair it with runtime health monitoring SQL to track integrity/security drift.
+
+**IMPLEMENTATION:**
+- Added `trg_before_member_delete_gdpr_guard` in `sql/03_Triggers.sql`:
+  - blocks direct member deletion unless status is `anonymized`
+  - requires matching `audit_gdpr` evidence before delete
+- Reviewed trigger coverage in `sql/03_Triggers.sql` (29 trigger definitions after hardening update).
+- Added runtime DB/security checks in `sql/11_Monitoring_DB_Security_Health.sql` for operational thresholds.
+- Kept index layer stable (`sql/06_Indexes.sql`, `sql/07_Cycle2_Indexes.sql`) and focused Cycle 4 on guardrails + observability.
+
+**PATTERN APPRIS:**
+1. Sensitive delete paths need explicit DB-level policy guards even if application logic already enforces flow.
+2. Threshold-based SQL health checks provide fast production diagnostics without coupling to heavy APM tooling.
+3. Monitoring scripts should emit machine-readable summaries to integrate with CI and incident triage.
+
+**REGRESSION TEST:**
+- `dotnet test Riada.sln --nologo` ✅
+- `pwsh -File scripts\Monitoring\Run-MonitoringChecks.ps1 -Ci` ✅ (safe skip if DB/mysql unavailable)
+
+---
+
+### [2026-03-16] DEVOPS_COMMANDER — Monitoring Operability Hooks (Cycle 4)
+
+**PROBLEM:** CI pipelines covered build/test quality but lacked lightweight runtime signal checks for DB and security drift.
+
+**DECISION:** Ship a path-scoped monitoring workflow plus SQL/PowerShell probes that are strict in production mode and non-disruptive in default CI mode.
+
+**IMPLEMENTATION:**
+- Added `.github/workflows/ci-monitoring.yml` with path filters limited to monitoring assets.
+- Added `sql/11_Monitoring_DB_Security_Health.sql` with thresholded checks (`OK/WARN/CRITICAL`).
+- Added `scripts/Monitoring/Invoke-DbSecurityHealthCheck.ps1` for runtime DB/security probing and JSON summaries.
+- Added `scripts/Monitoring/Run-MonitoringChecks.ps1` wrapper with soft-skip behavior when DB/mysql is unavailable.
+- Added `docs/MONITORING_OPERABILITY.md` and linked it in `docs/DOCUMENTATION_INDEX.md`.
+
+**PATTERN APPRIS:**
+1. Operability checks should be independent and path-scoped to avoid destabilizing core CI pipelines.
+2. Monitoring jobs need machine-readable summaries (`*.summary.json`) for alerting and triage.
+3. DB-dependent checks should support soft skip in shared CI runners but strict gating in release environments.
+
+**REGRESSION TEST:**
+- `pwsh -File scripts\Monitoring\Run-MonitoringChecks.ps1 -Ci` ✅
+- `dotnet test Riada.sln --nologo` ✅
+
+---

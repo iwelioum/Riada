@@ -20,8 +20,9 @@
 
 ### 🚀 **Pour les DevOps**
 1. **Lire:** [`AUTOMATION_GUIDE.md`](#automation-guidemd)
-2. **Déployer:** `docker-compose up`
-3. **Monitorer:** Accès à `/health`
+2. **Monitoring:** [`MONITORING_OPERABILITY.md`](#monitoring_operabilitymd)
+3. **Déployer:** `docker-compose up`
+4. **Monitorer:** Accès à `/health` + scripts monitoring cycle 4
 
 ---
 
@@ -86,6 +87,17 @@
   - Troubleshooting détaillé
   - Performance tips
 - **→ [Voir le fichier](./AUTOMATION_GUIDE.md)**
+
+### **MONITORING_OPERABILITY.md** 📈
+- **Durée:** 3-5 min de lecture
+- **Pour:** Exécuter les checks DB/sécurité en local et en CI
+- **Contient:**
+  - SQL runtime checks (DB + security health)
+  - Scripts PowerShell de monitoring
+  - Variables d'environnement DB
+  - Artifacts de sortie (`artifacts/monitoring/`)
+  - Workflow CI dédié monitoring
+- **→ [Voir le fichier](./MONITORING_OPERABILITY.md)**
 
 ### **AUTOMATION_MANIFEST.md** 📦
 - **Durée:** 5 min de lecture
