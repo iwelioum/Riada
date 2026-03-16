@@ -34,7 +34,7 @@
       <button class="btn-upgrade">Upgrade FitMove 3.2</button>
     </div>
 
-    <button class="logout">
+    <button class="logout" (click)="logout()">
       <span class="icon">↩</span>
       Logout
     </button>
@@ -64,7 +64,7 @@
     </header>
 
     <main class="content">
-      <ng-content></ng-content>
+      <router-outlet></router-outlet>
     </main>
   </div>
 </div>

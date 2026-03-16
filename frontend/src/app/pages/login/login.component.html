@@ -1,0 +1,41 @@
+<div class="login-shell">
+  <div class="login-brand">
+    <div class="brand-logo">⚡</div>
+    <h1 class="brand-name">FitMove</h1>
+    <p class="brand-sub">Riada Platform</p>
+    <p class="brand-tagline">Track. Analyze. Succeed.</p>
+  </div>
+
+  <div class="login-panel">
+    <div class="login-card">
+      <h2 class="login-title">Sign in</h2>
+      <p class="login-desc">Select a profile to access the platform</p>
+
+      <div *ngIf="error" class="login-error">
+        {{ error }}
+      </div>
+
+      <div class="user-cards">
+        <button
+          *ngFor="let user of devUsers"
+          class="user-card"
+          [class.loading]="loadingUserId === user.userId"
+          [disabled]="isLoading"
+          (click)="login(user)"
+        >
+          <div class="user-avatar">{{ user.label[0] }}</div>
+          <div class="user-info">
+            <div class="user-label">{{ user.label }}</div>
+            <div class="user-desc">{{ user.description }}</div>
+          </div>
+          <div class="user-arrow">
+            <span *ngIf="loadingUserId !== user.userId">→</span>
+            <span *ngIf="loadingUserId === user.userId" class="spinner">⟳</span>
+          </div>
+        </button>
+      </div>
+
+      <p class="login-hint">Development environment — no password required</p>
+    </div>
+  </div>
+</div>

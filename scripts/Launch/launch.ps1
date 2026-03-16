@@ -382,29 +382,17 @@ function Invoke-FrontendDev {
     Write-Header 'FRONTEND DEV'
     Invoke-FrontendInstallIfNeeded
 
-    $distPath = Join-Path $script:Config.FrontendProject 'dist\riada-frontend\browser'
-    $needsBuild = -not (Test-Path -Path $distPath -PathType Container)
-
+    $frontendPort = $script:Config.FrontendPort
     Push-Location $script:Config.FrontendProject
     try {
-        if ($needsBuild) {
-            Write-Info 'No production build found. Running npm run build...'
-            & npm run build
-            $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { $LASTEXITCODE }
-            if ($exitCode -ne 0) {
-                Write-Error-Log "Frontend build failed (exit code: $exitCode)"
-                exit $exitCode
-            }
-        }
-
-        Write-Info "Starting static frontend server on $($script:Config.FrontendUrl) from dist/..."
+        Write-Info "Starting Angular dev server on $($script:Config.FrontendUrl)..."
         Write-Host 'Press Ctrl+C to stop the frontend server.'
         Write-Host ''
 
-        & npm run serve:dist
+        & npm run ng -- serve --port $frontendPort
         $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { $LASTEXITCODE }
         if ($exitCode -ne 0) {
-            Write-Error-Log "Frontend server failed (exit code: $exitCode)"
+            Write-Error-Log "Angular dev server failed (exit code: $exitCode)"
             exit $exitCode
         }
     }
@@ -417,9 +405,7 @@ function Invoke-Fullstack {
     Write-Header 'FULLSTACK'
     Invoke-FrontendInstallIfNeeded
 
-    $distPath = Join-Path $script:Config.FrontendProject 'dist\riada-frontend\browser'
-    $buildStep = if (Test-Path -Path $distPath -PathType Container) { '' } else { 'npm run build; ' }
-    $frontendCommand = "Set-Location -LiteralPath '$($script:Config.FrontendProject)'; $buildStep npm run serve:dist"
+    $frontendCommand = "Set-Location -LiteralPath '$($script:Config.FrontendProject)'; npm run ng -- serve --port $($script:Config.FrontendPort)"
     $frontendProcess = Start-Process -FilePath 'powershell' -ArgumentList @('-NoProfile', '-NoExit', '-ExecutionPolicy', 'Bypass', '-Command', $frontendCommand) -PassThru
     Write-Success "Frontend started in separate window (PID: $($frontendProcess.Id))"
     Write-Info "Frontend URL: $($script:Config.FrontendUrl)"

@@ -1,5 +1,6 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 import { AuthSessionService } from '../services/auth-session.service';
 
@@ -54,12 +55,16 @@ function normalizeApiError(error: HttpErrorResponse): HttpErrorResponse {
 
 export const apiErrorInterceptor: HttpInterceptorFn = (request, next) => {
   const session = inject(AuthSessionService);
+  const router = inject(Router);
 
   return next(request).pipe(
     catchError((error: unknown) => {
       if (error instanceof HttpErrorResponse) {
         if (error.status === 401) {
           session.clearAccessToken();
+          if (!request.url.includes('/Auth/')) {
+            router.navigate(['/login']);
+          }
         }
 
         return throwError(() => normalizeApiError(error));

@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { AuthService } from '../core/services/auth.service';
 
 interface NavItem {
   path: string;
@@ -18,7 +19,7 @@ interface NavGroup {
 @Component({
   selector: 'app-layout',
   standalone: true,
-  imports: [CommonModule, RouterLink, RouterLinkActive],
+  imports: [CommonModule, RouterLink, RouterLinkActive, RouterOutlet],
   templateUrl: './layout.component.html',
   styleUrl: './layout.component.scss'
 })
@@ -60,7 +61,16 @@ export class LayoutComponent {
     }
   ];
 
+  constructor(private auth: AuthService, private router: Router) {}
+
   toggleSidebar() {
     this.sidebarOpen = !this.sidebarOpen;
+  }
+
+  logout() {
+    this.auth.logout().subscribe({
+      next: () => this.router.navigate(['/login']),
+      error: () => this.router.navigate(['/login'])
+    });
   }
 }
