@@ -2,10 +2,10 @@ services:
   mysql:
     image: mysql:8.0
     environment:
-      MYSQL_ROOT_PASSWORD: root_password
-      MYSQL_DATABASE: riada_db
-      MYSQL_USER: riada_user
-      MYSQL_PASSWORD: riada_password
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
       - "3306:3306"
     volumes:
@@ -23,11 +23,11 @@ services:
       context: ../..
       dockerfile: scripts/Docker/Dockerfile
     environment:
-      ConnectionStrings__DefaultConnection: "Server=mysql;Port=3306;Database=riada_db;User=riada_user;Password=riada_password;"
-      ASPNETCORE_ENVIRONMENT: Development
-      Jwt__SecretKey: "your-secret-key-change-in-production"
-      Jwt__Issuer: "Riada"
-      Jwt__Audience: "RiadaAPI"
+      ConnectionStrings__DefaultConnection: ${CONNECTION_STRING}
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
+      Jwt__SecretKey: ${JWT_SECRET_KEY}
+      Jwt__Issuer: ${JWT_ISSUER}
+      Jwt__Audience: ${JWT_AUDIENCE}
     ports:
       - "5275:5275"
       - "5174:5174"

@@ -1,0 +1,74 @@
+name: .NET CI
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'Riada.sln'
+      - '.github/workflows/ci-dotnet.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'Riada.sln'
+      - '.github/workflows/ci-dotnet.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: Build & Test
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup .NET SDK 8.x
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.x'
+
+    - name: Restore NuGet packages
+      run: dotnet restore Riada.sln
+      timeout-minutes: 5
+
+    - name: Build solution
+      run: dotnet build Riada.sln --configuration Release --no-restore
+      timeout-minutes: 10
+
+    - name: Run unit tests
+      run: dotnet test tests/Riada.UnitTests/Riada.UnitTests.csproj --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --logger "trx;LogFileName=unit-test-results.trx"
+      timeout-minutes: 10
+
+    - name: Run integration tests
+      run: dotnet test tests/Riada.IntegrationTests/Riada.IntegrationTests.csproj --configuration Release --no-build --verbosity normal --collect:"XPlat Code Coverage" --logger "trx;LogFileName=integration-test-results.trx"
+      timeout-minutes: 15
+
+    - name: Upload test results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: '**/TestResults/**'
+        retention-days: 30
+
+    - name: Publish coverage reports
+      if: success()
+      uses: codecov/codecov-action@v3
+      with:
+        files: '**/coverage.cobertura.xml'
+        flags: unittests
+        fail_ci_if_error: false
+        verbose: true
+
+    - name: Upload build artifacts
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-artifacts-dotnet
+        path: 'src/Riada.API/bin/Release/net8.0/publish'
+        retention-days: 7

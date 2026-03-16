@@ -17,9 +17,17 @@ RUN dotnet publish "src/Riada.API/Riada.API.csproj" -c Release -o /app/publish /
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 
+# Install curl for health checks
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+
 EXPOSE 5275 5174
 ENV ASPNETCORE_URLS=https://+:5275;http://+:5174
 ENV ASPNETCORE_ENVIRONMENT=Production
 
 COPY --from=build /app/publish .
+
+# Health check endpoint
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
+  CMD curl -f http://localhost:5174/health || exit 1
+
 ENTRYPOINT ["dotnet", "Riada.API.dll"]
