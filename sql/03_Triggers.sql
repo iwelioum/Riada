@@ -65,27 +65,17 @@ CREATE TRIGGER trg_after_payment_insert
 AFTER INSERT ON payments
 FOR EACH ROW
 BEGIN
-    DECLARE v_balance_due DECIMAL(10,2) DEFAULT NULL;
-
     IF NEW.status = 'succeeded' THEN
-        SELECT balance_due
-        INTO   v_balance_due
-        FROM   invoices
-        WHERE  id = NEW.invoice_id
-        FOR UPDATE;
-
         UPDATE invoices
         SET
             amount_paid     = amount_paid + NEW.amount,
             status          = CASE
-                                  WHEN v_balance_due IS NOT NULL
-                                       AND (v_balance_due - NEW.amount) <= 0.01
+                                  WHEN (amount_paid + NEW.amount) >= (amount_incl_tax - 0.01)
                                   THEN 'paid'
                                   ELSE 'partially_paid'
                               END,
             paid_in_full_at = CASE
-                                  WHEN v_balance_due IS NOT NULL
-                                       AND (v_balance_due - NEW.amount) <= 0.01
+                                  WHEN (amount_paid + NEW.amount) >= (amount_incl_tax - 0.01)
                                   THEN NOW(3)
                                   ELSE NULL
                               END
@@ -95,7 +85,11 @@ BEGIN
 
         UPDATE invoices
         SET    amount_paid     = GREATEST(0.00, amount_paid - NEW.amount),
-               status          = 'issued',
+               status          = CASE
+                                     WHEN GREATEST(0.00, amount_paid - NEW.amount) <= 0.01
+                                     THEN 'issued'
+                                     ELSE 'partially_paid'
+                                 END,
                paid_in_full_at = NULL
         WHERE  id = NEW.invoice_id;
 
@@ -269,13 +263,21 @@ BEFORE INSERT ON guests
 FOR EACH ROW
 BEGIN
     DECLARE v_active_count INT UNSIGNED DEFAULT 0;
+    DECLARE v_sponsor_member_lock INT UNSIGNED DEFAULT NULL;
 
-    IF NEW.status = 'active' THEN
+    IF NEW.status = 'active' AND NEW.sponsor_member_id IS NOT NULL THEN
+
+        SELECT id
+        INTO   v_sponsor_member_lock
+        FROM   members
+        WHERE  id = NEW.sponsor_member_id
+        FOR UPDATE;
 
         SELECT COUNT(*) INTO v_active_count
         FROM   guests
         WHERE  sponsor_member_id = NEW.sponsor_member_id
-          AND  status            = 'active';
+          AND  status            = 'active'
+        FOR UPDATE;
 
         IF v_active_count >= 1 THEN
             SIGNAL SQLSTATE '45000'
@@ -292,13 +294,23 @@ BEFORE UPDATE ON guests
 FOR EACH ROW
 BEGIN
     DECLARE v_active_count INT UNSIGNED DEFAULT 0;
+    DECLARE v_sponsor_member_lock INT UNSIGNED DEFAULT NULL;
 
-    IF NEW.status = 'active' AND OLD.status <> 'active' THEN
+    IF NEW.status = 'active'
+       AND OLD.status <> 'active'
+       AND NEW.sponsor_member_id IS NOT NULL THEN
+
+        SELECT id
+        INTO   v_sponsor_member_lock
+        FROM   members
+        WHERE  id = NEW.sponsor_member_id
+        FOR UPDATE;
 
         SELECT COUNT(*) INTO v_active_count
         FROM   guests
         WHERE  sponsor_member_id = NEW.sponsor_member_id
-          AND  status            = 'active';
+          AND  status            = 'active'
+        FOR UPDATE;
 
         IF v_active_count >= 1 THEN
             SIGNAL SQLSTATE '45000'
@@ -413,6 +425,30 @@ BEGIN
        AND TIMESTAMPDIFF(YEAR, NEW.date_of_birth, CURDATE()) < 16 THEN
         SIGNAL SQLSTATE '45000'
             SET MESSAGE_TEXT = '[TRG][members] Reason: Minimum age requirement not met on date_of_birth update. Value: must be >= 16 years old';
+    END IF;
+END$$
+
+
+DROP TRIGGER IF EXISTS trg_before_member_delete_gdpr_guard$$
+CREATE TRIGGER trg_before_member_delete_gdpr_guard
+BEFORE DELETE ON members
+FOR EACH ROW
+BEGIN
+    DECLARE v_audit_rows INT UNSIGNED DEFAULT 0;
+
+    IF OLD.status <> 'anonymized' THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = '[TRG][members] Reason: Direct deletion requires prior anonymization. Value: use sp_AnonymizeMember first';
+    END IF;
+
+    SELECT COUNT(*)
+    INTO   v_audit_rows
+    FROM   audit_gdpr
+    WHERE  member_id = OLD.id;
+
+    IF v_audit_rows = 0 THEN
+        SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = '[TRG][members] Reason: Missing GDPR audit trail before deletion. Value: anonymization audit required';
     END IF;
 END$$
 

@@ -550,3 +550,36 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 - `dotnet test Riada.sln --nologo` ✅
 
 ---
+
+### [2026-03-16] DATABASE_MASTER — Cycle 4 Trigger Integrity + Database Observability
+
+**PROBLEM:** Cycle 4 required trigger-level integrity/performance hardening plus practical DB observability, while keeping schema changes backward-compatible and low risk.
+
+**DECISION:** Apply targeted trigger fixes (locking + payment reconciliation simplification), keep existing index model, and add read-only diagnostics/monitoring SQL assets.
+
+**IMPLEMENTATION:**
+- Updated `sql/03_Triggers.sql`:
+  - `trg_after_payment_insert`: removed redundant invoice re-read/lock and derived invoice status directly from post-update amounts.
+  - `trg_after_payment_insert`: refund path now keeps `partially_paid` when residual paid amount remains (instead of forcing `issued`).
+  - `trg_before_guest_insert_limit` / `trg_before_guest_update_limit`: added sponsor row locking + `FOR UPDATE` counting to reduce concurrent Duo Pass race risk.
+- Added `sql/11_Cycle4_Trigger_Index_Diagnostics.sql`:
+  - trigger inventory/order sensitivity checks
+  - trigger complexity heuristics
+  - index catalog + left-prefix overlap diagnostics
+  - trigger-critical index presence probes
+- Added `sql/12_Cycle4_Monitoring_Queries.sql`:
+  - trigger health scorecard (guest, booking/session, invoice, payment consistency)
+  - slow-risk operational queries (payment retries, denial spikes, booking velocity)
+  - index usage checks and lock/statement-latency visibility
+- Added `sql/13_Cycle4_Task_Tracking.sql`:
+  - idempotent update/report script to set `db_tasks` cycle4 rows to `done` when table exists.
+
+**PATTERN APPRIS:**
+1. Prefer low-risk lock and arithmetic corrections inside triggers before broader transactional redesign.
+2. Pair trigger edits with invariant-monitoring queries so drift is observable in production.
+3. Avoid adding speculative indexes when trigger predicates are already covered; prioritize visibility first.
+
+**REGRESSION TEST:**
+- `dotnet test Riada.sln --nologo` ✅ (79 passed, 0 failed)
+
+---
