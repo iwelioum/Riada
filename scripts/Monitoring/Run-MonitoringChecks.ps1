@@ -20,7 +20,7 @@ $dbScriptPath = Join-Path $PSScriptRoot 'Invoke-DbSecurityHealthCheck.ps1'
 $requiredFiles = @(
     (Join-Path $repoRoot 'sql\11_Monitoring_DB_Security_Health.sql'),
     $dbScriptPath,
-    (Join-Path $repoRoot 'docs\MONITORING_OPERABILITY.md')
+    (Join-Path $repoRoot 'docs\operations\MONITORING_OPERABILITY.md')
 )
 
 $missingFiles = @()
@@ -32,26 +32,39 @@ foreach ($requiredFile in $requiredFiles) {
 
 $maxAuditAgeDays = 45
 $auditFreshness = @()
-foreach ($auditFileName in @('SECURITY_AUDIT_REPORT.md', 'DATABASE_AUDIT_REPORT.md')) {
-    $auditFilePath = Join-Path $repoRoot $auditFileName
+$auditFiles = @(
+    @{
+        Name = 'SECURITY_AUDIT_REPORT.md'
+        RelativePath = 'docs\archive\root-audits\SECURITY_AUDIT_REPORT.md'
+    },
+    @{
+        Name = 'DATABASE_AUDIT_REPORT.md'
+        RelativePath = 'docs\archive\root-audits\DATABASE_AUDIT_REPORT.md'
+    }
+)
+
+foreach ($auditSpec in $auditFiles) {
+    $auditFilePath = Join-Path $repoRoot $auditSpec.RelativePath
     if (Test-Path -Path $auditFilePath -PathType Leaf) {
-        $auditFile = Get-Item -Path $auditFilePath
-        $ageDays = [math]::Round(((Get-Date).ToUniversalTime() - $auditFile.LastWriteTimeUtc).TotalDays, 2)
+        $auditInfo = Get-Item -Path $auditFilePath
+        $ageDays = [math]::Round(((Get-Date).ToUniversalTime() - $auditInfo.LastWriteTimeUtc).TotalDays, 2)
         $auditFreshness += [ordered]@{
-            file      = $auditFileName
+            file      = $auditSpec.Name
             exists    = $true
             age_days  = $ageDays
             max_days  = $maxAuditAgeDays
             is_stale  = ($ageDays -gt $maxAuditAgeDays)
+            path      = $auditFilePath
         }
     }
     else {
         $auditFreshness += [ordered]@{
-            file      = $auditFileName
+            file      = $auditSpec.Name
             exists    = $false
             age_days  = $null
             max_days  = $maxAuditAgeDays
             is_stale  = $false
+            path      = $auditFilePath
         }
     }
 }

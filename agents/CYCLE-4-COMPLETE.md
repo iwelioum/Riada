@@ -35,7 +35,7 @@
 - Added dedicated path-scoped workflow:
   - `.github/workflows/ci-monitoring.yml`
 - Added monitoring documentation:
-  - `docs/MONITORING_OPERABILITY.md`
+  - `docs/operations/MONITORING_OPERABILITY.md`
 
 ---
 
@@ -59,4 +59,5 @@
 
 Cycle 4 delivered practical hardening and monitoring foundations with no test regressions.  
 Project is ready to proceed to **Cycle 5 (DevOps & CI/CD enhancements)**.
+
 

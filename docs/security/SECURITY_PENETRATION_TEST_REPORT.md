@@ -10,7 +10,7 @@
 ## EXECUTIVE SUMMARY
 
 ### Overall Security Posture
-**Risk Rating: MEDIUM** (5 Medium/Low issues found, robust fundamentals)
+**Risk Rating: MEDIUM (Cycle 3 baseline) → LOW-MEDIUM after Cycle 4 hardening**
 
 **Total Endpoints Tested:** 33  
 **Vulnerabilities Found:** 5
@@ -21,13 +21,21 @@
 
 **Frontend Audit:** 2 concerns identified (non-critical)
 
+**Cycle 4 Remediation Update (2026-03-16):**
+- ✅ Token lifecycle hardened with explicit `POST /api/auth/logout`
+- ✅ Refresh/access revocation now persisted beyond process memory (local persistent JTI store)
+- ✅ Revoked access tokens are rejected during JWT validation
+- ✅ Added per-user auth abuse throttling on `/api/auth/token` and `/api/auth/refresh`
+- ✅ Added search/filter pagination bounds on exposed query endpoints (`members`, `guests`, `analytics`, `courses`, `equipment`)
+- ⚠️ Residual risks: distributed revocation synchronization (multi-node) and frontend HttpOnly cookie migration remain open
+
 ### Key Findings
 1. ✅ **Core Authentication:** JWT-based system with proper signature validation
-2. ⚠️ **Token Revocation:** In-memory only (lost on restart) - **MEDIUM**
+2. ✅ **Token Revocation & Logout:** explicit revocation flow implemented (`/api/auth/logout`)
 3. ✅ **Authorization:** Proper RBAC with policy enforcement
 4. ✅ **Input Validation:** FluentValidation framework applied systematically
-5. ⚠️ **Rate Limiting:** IP-based only, no per-user limits - **MEDIUM**
-6. ⚠️ **Search Parameters:** No length limits on search input - **LOW**
+5. ✅ **Rate Limiting:** IP-based limits now complemented with per-user auth throttling
+6. ✅ **Search Parameters:** Length and bounds validation added on exposed filters
 7. ✅ **SQL Injection:** No exploitable vulnerabilities found
 8. ✅ **XSS Protection:** Proper sanitization and validation
 9. ✅ **Exception Handling:** No sensitive information leakage
@@ -1245,6 +1253,8 @@ export class MemberDetailsComponent {
 ### Medium Issues Found: 3 ⚠️
 ### Low Issues Found: 2 ⚠️
 
+> **Cycle 4 status:** 3/5 findings remediated in backend. Residual open items: 1 medium (frontend token storage strategy), 1 low (dev bypass hygiene).
+
 ---
 
 ### ⚠️ MEDIUM SEVERITY ISSUES
@@ -1252,36 +1262,37 @@ export class MemberDetailsComponent {
 #### Issue 1: Token Revocation Not Persistent
 **Severity:** MEDIUM  
 **Component:** AuthController, JwtTokenService  
-**File:** `src/Riada.API/Security/JwtTokenService.cs:35`
+**Status:** ✅ **PARTIALLY REMEDIATED IN CYCLE 4**  
+**Files:** `src/Riada.API/Security/JwtTokenService.cs`, `src/Riada.API/Controllers/AuthController.cs`, `src/Riada.API/Program.cs`
 
 ```csharp
-private readonly HashSet<string> _revokedTokens = new();  // In-memory only!
+[HttpPost("logout")]
+[Authorize]
+public IActionResult Logout(...) => Ok(...);
 ```
 
 **Problem:**
-- Revoked tokens stored in memory (HashSet)
-- Lost when application restarts
-- Not shared across multiple instances
-- No logout functionality
+- Cycle 3 baseline used in-memory revocation only.
+- No explicit logout endpoint existed.
 
 **Impact:**
-- User logs out, then restarts app → old token valid again
-- Compromised tokens cannot be revoked until expiration
-- 60+ minute window for token reuse after restart
+- Cycle 4 now revokes both access and refresh tokens by JTI and persists revocations to disk.
+- JWT middleware now rejects revoked access tokens on authenticated requests.
+- Remaining gap: revocation persistence is node-local (not yet shared across clustered instances).
 
 **Remediation:**
-- Implement Redis-backed token blacklist
-- Add logout endpoint to explicitly revoke tokens
-- Store revocation with TTL matching token expiration
+- Keep a shared/distributed revocation store (Redis/DB) for multi-instance deployments.
+- Add operational monitoring on revocation-store write/read failures.
 
-**Estimated Effort:** 2-4 hours
+**Estimated Effort (remaining):** 2-4 hours for distributed-store upgrade
 
 ---
 
 #### Issue 2: No Per-User Rate Limiting
 **Severity:** MEDIUM  
 **Component:** Rate Limiting Middleware  
-**File:** `src/Riada.API/appsettings.json:39-47`
+**Status:** ✅ **REMEDIATED IN CYCLE 4**  
+**Files:** `src/Riada.API/Security/AuthAbuseProtectionService.cs`, `src/Riada.API/Controllers/AuthController.cs`, `src/Riada.API/appsettings.json`
 
 ```json
 "IpRateLimit": {
@@ -1290,22 +1301,20 @@ private readonly HashSet<string> _revokedTokens = new();  // In-memory only!
 }
 ```
 
-**Problem:**
+**Problem (Cycle 3 baseline):**
 - Rate limiting based on IP address only
 - Attacker can rotate through multiple IPs/proxies
 - No user-level rate limiting
 
-**Impact:**
-- Brute-force attacks possible with IP rotation
-- Botnet with 100 IPs can make 500 token attempts/minute (instead of 5)
-- Distributed attacks bypass rate limiting
+**Cycle 4 Remediation:**
+- Added per-user auth throttling for token generation and refresh attempts.
+- IP rate limiting remains in place as first-layer protection.
+- Added `Retry-After` responses on abuse throttling.
 
-**Remediation:**
-- Add per-user rate limiting (userId + IP combination)
-- Store rate limit state in Redis or database
-- Implement exponential backoff for repeated failures
+**Residual Recommendation:**
+- Optional next step: move counters to distributed cache for multi-node consistency.
 
-**Estimated Effort:** 3-5 hours
+**Estimated Effort (remaining):** 1-2 hours (distributed counter backend, optional)
 
 ---
 
@@ -1367,105 +1376,47 @@ if (app.Environment.IsDevelopment() && allowDevBypass)
 #### Issue 5: Missing Search Parameter Length Limits
 **Severity:** LOW  
 **Component:** MembersController, EquipmentController  
-**File:** `src/Riada.Infrastructure/Repositories/MemberRepository.cs:40-44`
+**Status:** ✅ **REMEDIATED IN CYCLE 4**  
+**Files:** `src/Riada.API/Controllers/MembersController.cs`, `src/Riada.API/Controllers/GuestsController.cs`, `src/Riada.API/Controllers/AnalyticsController.cs`, `src/Riada.API/Controllers/CoursesController.cs`, `src/Riada.API/Controllers/EquipmentController.cs`
 
-**Problem:**
+**Problem (Cycle 3 baseline):**
 ```csharp
 if (!string.IsNullOrWhiteSpace(searchTerm))
     query = query.Where(m => m.FirstName.Contains(searchTerm) || ...);
     // No length validation on searchTerm
 ```
 
-**Impact:**
-- Attacker can send 1MB search string
-- Causes performance degradation
-- Database query becomes slow
-- DoS vulnerability (lower severity)
+**Cycle 4 Remediation:**
+- Added `[StringLength]` and `[Range]` constraints on exposed search/filter/pagination query params.
+- Added use-case guardrails for page/pageSize/limit/date ranges.
+- Invalid filters now return controlled 400 responses instead of unbounded query execution.
 
-**Remediation:**
-- Add max length validation on search parameters (e.g., 100 chars)
-- Implement in validator or controller
-- Return 400 Bad Request for oversized inputs
+**Residual Recommendation:**
+- Add synthetic abuse tests in CI to exercise query-boundary protection at scale.
 
-**Estimated Effort:** 30 minutes
+**Estimated Effort (remaining):** 30-60 minutes (additional abuse-focused test cases)
 
 ---
 
 ## PART 4: REMEDIATION ROADMAP
 
-### 🔴 IMMEDIATE (This Cycle - Cycle 3)
+### ✅ Cycle 4 Implementation Status
 
-**Priority 1.1: Implement Persistent Token Revocation**
-- **Time:** 2-4 hours
-- **Files to Modify:**
-  - `src/Riada.API/Security/JwtTokenService.cs` (add Redis backing)
-  - `src/Riada.Infrastructure/` (add IRevokedTokenStore interface)
-  - `src/Riada.API/Controllers/AuthController.cs` (add logout endpoint)
-- **Solution:**
-  ```csharp
-  [HttpPost("logout")]
-  [Authorize]
-  public async Task<IActionResult> Logout(
-      [FromServices] IRevokedTokenStore revokeStore,
-      CancellationToken ct)
-  {
-      var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", "");
-      await revokeStore.RevokeTokenAsync(token, TimeSpan.FromHours(1));
-      return Ok("Token revoked");
-  }
-  ```
-- **Testing:** Verify logout works, token rejected after logout
-- **Deliverable:** Logout endpoint + Redis-backed revocation
+**Completed in Cycle 4**
+- **Priority 1.1 (done):** logout endpoint + token revocation enforcement implemented in API.
+- **Priority 1.2 (done):** per-user auth abuse throttling added on token and refresh endpoints.
+- **Priority 2.2 (done):** search/filter length + pagination/date bounds added for exposed query endpoints.
 
-**Priority 1.2: Add Per-User Rate Limiting**
-- **Time:** 3-5 hours
-- **Files to Modify:**
-  - `src/Riada.API/Program.cs` (add rate limit middleware)
-  - `src/Riada.API/Middleware/` (create UserIdRateLimitMiddleware)
-- **Solution:** Store rate limits as Redis hash: `ratelimit:{userId}:{endpoint}`
-- **Testing:** Verify 5 attempts/min per user, not per IP
-- **Deliverable:** User-based rate limiting for /token endpoint
+**Still Open**
+- **Priority 1.3:** frontend migration to HttpOnly cookie token strategy (architecture-level change).
+- **Distributed hardening follow-up:** move revocation + per-user throttle state to shared Redis/DB for multi-node deployments.
 
-**Priority 1.3: Update Frontend Token Storage to HttpOnly Cookies**
-- **Time:** 4-6 hours
-- **Files to Modify:**
-  - Frontend authentication service (stop using localStorage for JWT)
-  - HTTP interceptor (use credentials: 'include')
-  - Backend to set HttpOnly cookies on /token response
-- **Solution:**
-  ```csharp
-  // In AuthController
-  Response.Cookies.Append("access_token", token, new CookieOptions
-  {
-      HttpOnly = true,
-      Secure = true,
-      SameSite = SameSiteMode.Strict,
-      MaxAge = TimeSpan.FromMinutes(60)
-  });
-  ```
+### 🟡 Remaining Priorities (Next Cycle)
 
-### 🟡 HIGH PRIORITY (Next Cycle - Cycle 4)
-
-**Priority 2.1: Remove Development Authorization Bypass**
-- **Time:** 1 hour
-- **Action:** Delete ALLOW_DEV_BYPASS logic, use test user approach instead
-
-**Priority 2.2: Add Search Parameter Length Limits**
-- **Time:** 30 minutes
-- **Action:** Add validator rules for search parameters (max 100 chars)
-
-**Priority 2.3: Implement Security Headers**
-- **Time:** 2 hours
-- **Headers to Add:**
-  - Content-Security-Policy
-  - X-Content-Type-Options: nosniff
-  - X-Frame-Options: DENY
-  - Strict-Transport-Security (HSTS)
-  - Referrer-Policy: strict-origin-when-cross-origin
-
-**Priority 2.4: Add Logout Endpoint Tests**
-- **Time:** 1 hour
-- **Test Coverage:** Verify token cannot be used after logout
+1. Remove development authorization bypass switch (`ALLOW_DEV_BYPASS`) for stricter non-prod parity.
+2. Complete frontend token storage migration to HttpOnly/Secure/SameSite cookies.
+3. Add dedicated integration tests for logout + revoked-token access denial paths.
+4. Continue security header hardening and transport policy verification.
 
 ---
 
@@ -1572,15 +1523,15 @@ if (!string.IsNullOrWhiteSpace(searchTerm))
 
 ## CONCLUSION
 
-The Riada API implementation demonstrates **strong security fundamentals** with proper JWT authentication, RBAC enforcement, and input validation. The 3 identified medium-priority issues are addressable within 1-2 days of focused development work. The system is suitable for production deployment with the recommended mitigations applied.
+The Riada API implementation demonstrates **strong security fundamentals** with proper JWT authentication, RBAC enforcement, and input validation. Cycle 4 hardening closed the backend-medium findings for token lifecycle and per-user auth abuse control, and closed the low finding on unbounded search/filter inputs. Remaining risk is concentrated in cross-node revocation synchronization and frontend token storage strategy.
 
-**Overall Assessment:** ✅ **PRODUCTION-READY with minor hardening**
+**Overall Assessment:** ✅ **PRODUCTION-READY with targeted follow-ups**
 
 **Next Steps:**
-1. Prioritize token revocation and per-user rate limiting (this cycle)
-2. Implement HttpOnly cookie storage for JWT (this cycle)
-3. Add security headers and additional logging (next cycle)
-4. Establish quarterly security review cadence
+1. Move revocation/rate-limit state to shared distributed storage for horizontal scaling.
+2. Implement HttpOnly cookie storage strategy in frontend/backend auth flow.
+3. Add logout and revoked-token denial integration tests to CI.
+4. Maintain quarterly security review cadence.
 
 ---
 

@@ -103,7 +103,7 @@ NIVEAU 2 — INSTRUCTIONS (< 5000 tokens par fichier)
 
 NIVEAU 3 — RESSOURCES LOURDES (chargées uniquement si nécessaire)
   → sql/08_Select_Queries.sql (requêtes analytics de référence)
-  → docs/ARCHITECTURE.md (mapping exhaustif 21 tables)
+  → docs/architecture/ARCHITECTURE.md (mapping exhaustif 21 tables)
   → Le code source des fichiers à modifier
 ```
 
@@ -242,7 +242,7 @@ git blame agents/06-quality-engineering-agents.md  # Qui a changé quoi
    → 4 filtres Supreme Architect passés
 
 7. STORE (Knowledge Base)
-   → Documenter la décision dans docs/ARCHITECTURE_DECISIONS.md
+   → Documenter la décision dans docs/architecture/ARCHITECTURE_DECISIONS.md
    → Ajouter un test de régression dans tests/
    → Mettre à jour l'agent markdown si un nouveau pattern émerge
    → git commit avec message structuré
@@ -313,3 +313,4 @@ echo "  Dernier commit agents/: $(git log --oneline -1 agents/ 2>/dev/null || ec
 [commande]
 ```
 ```
+

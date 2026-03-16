@@ -363,12 +363,12 @@ ng serve --port 4300
 ## Documentation Index
 
 - **README.md** — Quick start, high-level overview
-- **docs/QUICK_START.md** — 30-second launch guide
+- **docs/getting-started/QUICK_START.md** — 30-second launch guide
 - **docs/DOCUMENTATION_INDEX.md** — Central docs hub
-- **docs/ARCHITECTURE.md** — Detailed schema + design
-- **docs/PATTERN_GUIDE.md** — UseCase + repository patterns
-- **docs/AUTOMATION_GUIDE.md** — Script automation reference
-- **docs/CLAUDE_CODE_INSTRUCTIONS.md** — C# backend details
+- **docs/architecture/ARCHITECTURE.md** — Detailed schema + design
+- **docs/patterns/PATTERN_GUIDE.md** — UseCase + repository patterns
+- **docs/operations/AUTOMATION_GUIDE.md** — Script automation reference
+- **docs/archive/CLAUDE_CODE_INSTRUCTIONS.md** — Legacy C# backend details
 - **frontend/README.md** — Angular setup & integration
 
 ---

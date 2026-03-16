@@ -46,13 +46,15 @@ docker-compose up
 ```
 Riada/
 ├── 📚 docs/                    # Toute la documentation
-│   ├── QUICK_START.md          # Démarrage 30 secondes
 │   ├── DOCUMENTATION_INDEX.md  # Index central (point d'entrée)
-│   ├── README_ORIGINAL.md      # Documentation complète
-│   ├── ARCHITECTURE.md         # Schéma BD et design
-│   ├── AUTOMATION_GUIDE.md     # Guide des scripts
-│   ├── AUTOMATION_MANIFEST.md  # Détails techniques
-│   └── ... (autres documentations)
+│   ├── getting-started/        # Démarrage rapide
+│   ├── architecture/           # Schéma, dictionnaire, ADR
+│   ├── operations/             # Automatisation & monitoring
+│   ├── security/               # Rapports sécurité
+│   ├── quality/                # Baselines et checks qualité
+│   ├── patterns/               # Guides de patterns
+│   ├── reports/                # Rapports de livraison
+│   └── archive/                # Historique et audits legacy
 │
 ├── 🤖 scripts/                 # Scripts d'automatisation
 │   ├── Launch/
@@ -99,11 +101,11 @@ Riada/
 
 | Besoin | Fichier | Chemin |
 |--------|---------|--------|
-| **Démarrer rapidement** | QUICK_START.md | `docs/` |
-| **Vue d'ensemble** | README_ORIGINAL.md | `docs/` |
+| **Démarrer rapidement** | QUICK_START.md | `docs/getting-started/` |
+| **Vue d'ensemble docs** | DOCUMENTATION_INDEX.md | `docs/` |
 | **Documentation centralisée** | DOCUMENTATION_INDEX.md | `docs/` |
-| **Schéma de la BD** | ARCHITECTURE.md | `docs/` |
-| **Guide des scripts** | AUTOMATION_GUIDE.md | `docs/` |
+| **Schéma de la BD** | ARCHITECTURE.md | `docs/architecture/` |
+| **Guide des scripts** | AUTOMATION_GUIDE.md | `docs/operations/` |
 | **Lancer l'API (Windows)** | launch.bat / launch.ps1 | `scripts/Launch/` |
 | **Lancer l'API (Mac/Linux)** | launch.sh | `scripts/Launch/` |
 | **Lancer le frontend** | launch.ps1 frontend | `scripts/Launch/` |
@@ -282,13 +284,12 @@ cd frontend && npm install
 
 Tous les guides sont dans le dossier [`docs/`](docs/) :
 
-- **[QUICK_START.md](docs/QUICK_START.md)** - Démarrage 30 sec
+- **[QUICK_START.md](docs/getting-started/QUICK_START.md)** - Démarrage 30 sec
 - **[DOCUMENTATION_INDEX.md](docs/DOCUMENTATION_INDEX.md)** - Index central
-- **[README_ORIGINAL.md](docs/README_ORIGINAL.md)** - Vue complète
-- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Schéma BD
-- **[AUTOMATION_GUIDE.md](docs/AUTOMATION_GUIDE.md)** - Guides scripts
-- **[PATTERN_GUIDE.md](docs/PATTERN_GUIDE.md)** - Patterns
-- **[EXECUTION_REPORT.md](docs/EXECUTION_REPORT.md)** - Rapport
+- **[ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md)** - Schéma BD
+- **[AUTOMATION_GUIDE.md](docs/operations/AUTOMATION_GUIDE.md)** - Guides scripts
+- **[PATTERN_GUIDE.md](docs/patterns/PATTERN_GUIDE.md)** - Patterns
+- **[EXECUTION_REPORT.md](docs/quality/EXECUTION_REPORT.md)** - Rapport
 
 ---
 

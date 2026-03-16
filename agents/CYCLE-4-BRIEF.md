@@ -34,7 +34,7 @@ Cycle 4 focuses on durable hardening and operational visibility.
 
 ### 2) SECURITY_SHIELD
 **Scope**
-- Use `docs/SECURITY_PENETRATION_TEST_REPORT.md` and `penetration_findings` to implement actionable remediations.
+- Use `docs/security/SECURITY_PENETRATION_TEST_REPORT.md` and `penetration_findings` to implement actionable remediations.
 - Prioritize medium findings:
   - revocation persistence strategy
   - per-user rate limiting strategy
@@ -76,4 +76,5 @@ Cycle 4 focuses on durable hardening and operational visibility.
 - Consolidation output expected:
   - `agents/memory/cycle-4-audit.md`
   - `agents/CYCLE-4-COMPLETE.md`
+
 

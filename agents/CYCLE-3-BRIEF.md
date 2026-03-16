@@ -212,7 +212,7 @@ Execute **20-30 hours of strategic improvements** to:
 
 **Implementation:**
 - Tool: Angular DevTools + Chrome DevTools
-- File: `docs/PERFORMANCE_BASELINE.md`
+- File: `docs/quality/PERFORMANCE_BASELINE.md`
 - Capture: Screenshot profiler results
 - Establish: Target metrics for future cycles
 
@@ -290,7 +290,7 @@ Execute **20-30 hours of strategic improvements** to:
 - **Document:** Security hardening roadmap
 
 **Output:**
-- File: `docs/SECURITY_PENETRATION_TEST_REPORT.md`
+- File: `docs/security/SECURITY_PENETRATION_TEST_REPORT.md`
 - Contains:
   - Executive summary (vulnerabilities by severity)
   - Detailed findings for each endpoint/component
@@ -399,3 +399,4 @@ Execute **20-30 hours of strategic improvements** to:
 All 3 agents are ready to deploy. They have clear prioritized tasks, success criteria, and interdependencies mapped. Parallel execution will complete in ~20-30 hours combined (2-3 days intensive).
 
 Ready to proceed? 🚀
+

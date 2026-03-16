@@ -7,14 +7,14 @@ on:
     paths:
       - 'scripts/Monitoring/**'
       - 'sql/11_Monitoring_DB_Security_Health.sql'
-      - 'docs/MONITORING_OPERABILITY.md'
+      - 'docs/operations/MONITORING_OPERABILITY.md'
       - '.github/workflows/ci-monitoring.yml'
   pull_request:
     branches: [ main, develop ]
     paths:
       - 'scripts/Monitoring/**'
       - 'sql/11_Monitoring_DB_Security_Health.sql'
-      - 'docs/MONITORING_OPERABILITY.md'
+      - 'docs/operations/MONITORING_OPERABILITY.md'
       - '.github/workflows/ci-monitoring.yml'
 
 permissions:

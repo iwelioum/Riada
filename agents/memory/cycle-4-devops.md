@@ -46,7 +46,7 @@
 
 ### 3) Documentation
 
-- Added `docs/MONITORING_OPERABILITY.md` with:
+- Added `docs/operations/MONITORING_OPERABILITY.md` with:
   - local/CI commands
   - DB environment variables
   - artifact output locations
@@ -90,3 +90,4 @@ Session todo table detected and updated for Cycle 4 DevOps tasks:
 - Produces CI-consumable artifacts for quick incident triage.
 - Preserves pipeline stability via path-scoped workflow + soft-skip DB behavior.
 - Enables strict production gating when desired (`-RequireDatabase`, `-FailOnWarning`).
+

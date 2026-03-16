@@ -439,7 +439,7 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 
 **IMPLEMENTATION:**
 - Assessed 33 endpoints.
-- Generated `docs/SECURITY_PENETRATION_TEST_REPORT.md`.
+- Generated `docs/security/SECURITY_PENETRATION_TEST_REPORT.md`.
 - Persisted findings in `penetration_findings` + `endpoint_coverage` SQL tables.
 
 **RESULTS:**
@@ -538,7 +538,7 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 - Added `sql/11_Monitoring_DB_Security_Health.sql` with thresholded checks (`OK/WARN/CRITICAL`).
 - Added `scripts/Monitoring/Invoke-DbSecurityHealthCheck.ps1` for runtime DB/security probing and JSON summaries.
 - Added `scripts/Monitoring/Run-MonitoringChecks.ps1` wrapper with soft-skip behavior when DB/mysql is unavailable.
-- Added `docs/MONITORING_OPERABILITY.md` and linked it in `docs/DOCUMENTATION_INDEX.md`.
+- Added `docs/operations/MONITORING_OPERABILITY.md` and linked it in `docs/DOCUMENTATION_INDEX.md`.
 
 **PATTERN APPRIS:**
 1. Operability checks should be independent and path-scoped to avoid destabilizing core CI pipelines.
@@ -641,7 +641,7 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 - Added npm script in `frontend/package.json`:
   - `e2e:smoke`
 - Added `scripts/Monitoring/Assert-PerformanceBaseline.ps1`:
-  - validates Cycle 6 target assertions in `docs/PERFORMANCE_BASELINE.md`
+  - validates Cycle 6 target assertions in `docs/quality/PERFORMANCE_BASELINE.md`
   - writes JSON gate summary for artifact consumption
 
 **PATTERN APPRIS:**
@@ -715,3 +715,4 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 - Security hardening code remains present as local unstaged changes in the working tree and requires explicit review/commit before production handoff finalization.
 
 ---
+

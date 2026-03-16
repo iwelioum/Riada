@@ -59,8 +59,8 @@ These were required to restore passing build/test status across the full solutio
 ## Deliverables Added This Cycle
 
 - `agents/memory/cycle-3-audit.md`
-- `docs/SECURITY_PENETRATION_TEST_REPORT.md`
-- `docs/PERFORMANCE_BASELINE.md`
+- `docs/security/SECURITY_PENETRATION_TEST_REPORT.md`
+- `docs/quality/PERFORMANCE_BASELINE.md`
 - `frontend/cypress.config.ts`
 - `frontend/cypress/**` (E2E suite + support files)
 - `frontend/src/app/core/services/state.service.ts`
@@ -78,4 +78,5 @@ These were required to restore passing build/test status across the full solutio
 - Full solution validation (frontend + backend tests): ✅
 
 **Cycle 4 can now proceed** (database optimization and deeper security hardening).
+
 

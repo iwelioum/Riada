@@ -69,7 +69,7 @@ All critical build/test gates were re-run and pass at the repository level after
 
 ### Delivered
 - Penetration testing report:
-  - `docs/SECURITY_PENETRATION_TEST_REPORT.md`
+  - `docs/security/SECURITY_PENETRATION_TEST_REPORT.md`
 - Findings dataset persisted in SQL tables:
   - `penetration_findings`
   - `endpoint_coverage`
@@ -120,4 +120,5 @@ Remaining non-blocking items (kept for next cycles):
 - Broader SCSS utility adoption across additional components.
 - Template-level Angular control-flow refinements (`@let` / `@if`) where useful.
 - E2E execution in CI against a running fullstack environment.
+
 

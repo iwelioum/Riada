@@ -10,7 +10,7 @@ on:
       - 'frontend/package-lock.json'
       - 'tests/Riada.UnitTests/Security/**'
       - 'tests/Riada.UnitTests/Middleware/SecurityHeadersMiddlewareTests.cs'
-      - 'docs/PERFORMANCE_BASELINE.md'
+      - 'docs/quality/PERFORMANCE_BASELINE.md'
       - 'scripts/Monitoring/Assert-PerformanceBaseline.ps1'
       - '.github/workflows/ci-quality-gates.yml'
   pull_request:
@@ -21,7 +21,7 @@ on:
       - 'frontend/package-lock.json'
       - 'tests/Riada.UnitTests/Security/**'
       - 'tests/Riada.UnitTests/Middleware/SecurityHeadersMiddlewareTests.cs'
-      - 'docs/PERFORMANCE_BASELINE.md'
+      - 'docs/quality/PERFORMANCE_BASELINE.md'
       - 'scripts/Monitoring/Assert-PerformanceBaseline.ps1'
       - '.github/workflows/ci-quality-gates.yml'
 

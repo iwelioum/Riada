@@ -1,5 +1,5 @@
 param(
-    [string]$BaselinePath = "docs/PERFORMANCE_BASELINE.md",
+    [string]$BaselinePath = "docs/quality/PERFORMANCE_BASELINE.md",
     [string]$OutputPath = "artifacts/monitoring/perf-baseline-gate.json"
 )
 

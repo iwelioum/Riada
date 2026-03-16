@@ -42,7 +42,7 @@ Cycle 4 goals are achieved with validated implementation across database, securi
 - Added dedicated workflow:
   - `.github/workflows/ci-monitoring.yml`
 - Added documentation:
-  - `docs/MONITORING_OPERABILITY.md`
+  - `docs/operations/MONITORING_OPERABILITY.md`
   - index update in `docs/DOCUMENTATION_INDEX.md`
 
 ---
@@ -67,4 +67,5 @@ Cycle 4 goals are achieved with validated implementation across database, securi
 
 **Complete and stable.**  
 Cycle 4 strengthened backend and SQL security posture while adding practical observability without destabilizing core pipelines.
+
 
