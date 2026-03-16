@@ -267,7 +267,7 @@ docker build -t riada-api .
 
 # Run container
 docker run -p 5275:5275 \
-  -e ConnectionStrings__DefaultConnection="..." \
+  -e ConnectionStrings__RiadaDb="..." \
   riada-api
 ```
 

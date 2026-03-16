@@ -23,7 +23,7 @@ services:
       context: ../..
       dockerfile: scripts/Docker/Dockerfile
     environment:
-      ConnectionStrings__DefaultConnection: ${CONNECTION_STRING}
+      ConnectionStrings__RiadaDb: ${RIADA_DB_CONNECTION_STRING}
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
       Jwt__SecretKey: ${JWT_SECRET_KEY}
       Jwt__Issuer: ${JWT_ISSUER}

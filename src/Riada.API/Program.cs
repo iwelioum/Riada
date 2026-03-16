@@ -32,6 +32,14 @@ builder.Services.AddRateLimiting(builder.Configuration);
 
 // ── Authentication (JWT Bearer with environment-based secrets) ──
 var jwtConfig = builder.Configuration.GetSection("Jwt");
+if (builder.Environment.IsDevelopment()
+    && string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("JWT_SECRET_KEY")))
+{
+    var generatedDevSecret = JwtSecretProvider.GenerateNewSecret();
+    Environment.SetEnvironmentVariable("JWT_SECRET_KEY", generatedDevSecret);
+    Console.WriteLine("⚠️  JWT_SECRET_KEY was missing. Generated an ephemeral development-only JWT key.");
+}
+
 var jwtSecret = JwtSecretProvider.GetSecretKey();
 var accessTokenCookieName = AuthCookieSettings.GetAccessTokenCookieName(builder.Configuration);
 
@@ -184,7 +192,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     var logger = app.Services.GetRequiredService<ILogger<Program>>();
-    logger.LogWarning("⚠️  Development mode enabled. Ensure JWT_SECRET_KEY environment variable is set.");
+    logger.LogWarning("⚠️  Development mode enabled. Set JWT_SECRET_KEY to keep tokens valid across restarts.");
     logger.LogWarning("⚠️  CORS restricted to: {AllowedOrigins}", string.Join(", ", allowedOrigins));
 }
 
@@ -197,7 +205,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+    app.UseHttpsRedirection();
 
 // Rate limiting should come before CORS and authentication
 app.UseRateLimiting();

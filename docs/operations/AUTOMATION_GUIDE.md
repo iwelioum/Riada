@@ -116,7 +116,7 @@ docker build -t riada-api .
 
 # Lancer le container
 docker run -p 5275:5275 \
-  -e ConnectionStrings__DefaultConnection="..." \
+  -e ConnectionStrings__RiadaDb="..." \
   riada-api
 ```
 
@@ -160,7 +160,7 @@ Dans `docker-compose.yml`, tu peux modifier:
 
 ```yaml
 environment:
-  ConnectionStrings__DefaultConnection: "Server=..." # BD
+  ConnectionStrings__RiadaDb: "Server=..." # BD
   Jwt__SecretKey: "your-secret-key"                 # JWT
   ASPNETCORE_ENVIRONMENT: "Development"             # Env
 ```

@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
 import { ApiService } from './api.service';
 import { PagedResponse } from '../models/api-models';
+import { environment } from '../../../environments/environment';
 
 /**
  * Unit Tests for ApiService
@@ -10,6 +11,8 @@ import { PagedResponse } from '../models/api-models';
 describe('ApiService', () => {
   let service: ApiService;
   let httpMock: HttpTestingController;
+  const apiBaseUrl = environment.apiUrl;
+  const apiRootUrl = environment.apiUrl.replace(/\/api$/, '');
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -107,7 +110,7 @@ describe('ApiService', () => {
           expect(result.firstName).toBe('John');
         });
 
-        const req = httpMock.expectOne(`https://localhost:7001/api/Members/${memberId}`);
+        const req = httpMock.expectOne(`${apiBaseUrl}/Members/${memberId}`);
         req.flush(mockResponse);
       });
 
@@ -124,7 +127,7 @@ describe('ApiService', () => {
           }
         );
 
-        const req = httpMock.expectOne(`https://localhost:7001/api/Members/${memberId}`);
+        const req = httpMock.expectOne(`${apiBaseUrl}/Members/${memberId}`);
         req.flush('Not Found', { status: 404, statusText: 'Not Found' });
       });
     });
@@ -148,7 +151,7 @@ describe('ApiService', () => {
           expect(result.firstName).toBe('Jane');
         });
 
-        const req = httpMock.expectOne('https://localhost:7001/api/Members');
+        const req = httpMock.expectOne(`${apiBaseUrl}/Members`);
         expect(req.request.method).toBe('POST');
         req.flush(mockResponse);
       });
@@ -167,7 +170,7 @@ describe('ApiService', () => {
           expect(result.firstName).toBe('UpdatedJohn');
         });
 
-        const req = httpMock.expectOne(`https://localhost:7001/api/Members/${memberId}`);
+        const req = httpMock.expectOne(`${apiBaseUrl}/Members/${memberId}`);
         expect(req.request.method).toBe('PUT');
         req.flush(mockResponse);
       });
@@ -190,7 +193,7 @@ describe('ApiService', () => {
           expect(result[0].firstName).toBe('Guest1');
         });
 
-        const req = httpMock.expectOne('https://localhost:7001/api/Guests');
+        const req = httpMock.expectOne(`${apiBaseUrl}/Guests`);
         req.flush(mockResponse);
       });
 
@@ -204,7 +207,7 @@ describe('ApiService', () => {
           expect(result.length).toBe(0);
         });
 
-        const req = httpMock.expectOne('https://localhost:7001/api/Guests');
+        const req = httpMock.expectOne(`${apiBaseUrl}/Guests`);
         req.flush(mockResponse);
       });
     });
@@ -228,7 +231,7 @@ describe('ApiService', () => {
           expect(result.firstName).toBe('NewGuest');
         });
 
-        const req = httpMock.expectOne('https://localhost:7001/api/Guests');
+        const req = httpMock.expectOne(`${apiBaseUrl}/Guests`);
         expect(req.request.method).toBe('POST');
         req.flush(mockResponse);
       });
@@ -246,7 +249,7 @@ describe('ApiService', () => {
           expect(result.message).toContain('banned');
         });
 
-        const req = httpMock.expectOne(`https://localhost:7001/api/Guests/${guestId}/ban`);
+        const req = httpMock.expectOne(`${apiBaseUrl}/Guests/${guestId}/ban`);
         expect(req.request.method).toBe('POST');
         req.flush(mockResponse);
       });
@@ -289,7 +292,7 @@ describe('ApiService', () => {
           expect(result.message).toContain('confirmed');
         });
 
-        const req = httpMock.expectOne(`https://localhost:7001/api/Courses/sessions/${sessionId}/book`);
+        const req = httpMock.expectOne(`${apiBaseUrl}/Courses/sessions/${sessionId}/book`);
         expect(req.request.method).toBe('POST');
         req.flush(mockResponse);
       });
@@ -308,7 +311,7 @@ describe('ApiService', () => {
           expect(result.message).toContain('cancelled');
         });
 
-        const req = httpMock.expectOne(`https://localhost:7001/api/Courses/bookings/${memberId}/${sessionId}`);
+        const req = httpMock.expectOne(`${apiBaseUrl}/Courses/bookings/${memberId}/${sessionId}`);
         expect(req.request.method).toBe('DELETE');
         req.flush(mockResponse);
       });
@@ -328,7 +331,7 @@ describe('ApiService', () => {
           expect(result.message).toContain('generated');
         });
 
-        const req = httpMock.expectOne('https://localhost:7001/api/Billing/generate');
+        const req = httpMock.expectOne(`${apiBaseUrl}/Billing/generate`);
         expect(req.request.method).toBe('POST');
         req.flush(mockResponse);
       });
@@ -352,7 +355,7 @@ describe('ApiService', () => {
           expect(result.invoiceNumber).toBe('INV-2024-03-001');
         });
 
-        const req = httpMock.expectOne(`https://localhost:7001/api/Billing/invoices/${invoiceId}`);
+        const req = httpMock.expectOne(`${apiBaseUrl}/Billing/invoices/${invoiceId}`);
         req.flush(mockResponse);
       });
     });
@@ -369,7 +372,7 @@ describe('ApiService', () => {
           expect(result.message).toContain('Payment');
         });
 
-        const req = httpMock.expectOne('https://localhost:7001/api/Billing/payments');
+        const req = httpMock.expectOne(`${apiBaseUrl}/Billing/payments`);
         expect(req.request.method).toBe('POST');
         req.flush(mockResponse);
       });
@@ -387,7 +390,7 @@ describe('ApiService', () => {
         expect(result.status).toBe('ok');
       });
 
-      const req = httpMock.expectOne('https://localhost:7001/health');
+      const req = httpMock.expectOne(`${apiRootUrl}/health`);
       req.flush(mockResponse);
     });
   });

@@ -2,7 +2,7 @@ import { RiadaEnvironment } from './environment.model';
 
 export const environment: RiadaEnvironment = {
   production: false,
-  apiUrl: 'https://localhost:7001/api',
+  apiUrl: 'http://localhost:5001/api',
   requestTimeoutMs: 15000,
   optionalApiEndpoints: {
     exercises: null,
