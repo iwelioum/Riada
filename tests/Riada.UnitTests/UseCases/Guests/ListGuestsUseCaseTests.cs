@@ -211,4 +211,26 @@ public class ListGuestsUseCaseTests
         result.HasPrevious.Should().BeTrue();
         result.TotalPages.Should().Be(3);
     }
+
+    [Fact]
+    public async Task ExecuteAsync_WithInvalidPage_ShouldThrowArgumentOutOfRangeException()
+    {
+        // Act
+        var act = async () => await _useCase.ExecuteAsync(0, 25);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentOutOfRangeException>()
+            .WithParameterName("page");
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WithOversizedPageSize_ShouldThrowArgumentOutOfRangeException()
+    {
+        // Act
+        var act = async () => await _useCase.ExecuteAsync(1, 101);
+
+        // Assert
+        await act.Should().ThrowAsync<ArgumentOutOfRangeException>()
+            .WithParameterName("pageSize");
+    }
 }

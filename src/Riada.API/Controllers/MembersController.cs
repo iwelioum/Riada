@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Riada.Application.DTOs.Requests.Members;
@@ -13,21 +14,29 @@ public class MembersController : ControllerBase
 {
     [HttpGet]
     [ProducesResponseType(200)]
+    [ProducesResponseType(400)]
     [ProducesResponseType(401)]
     [ProducesResponseType(403)]
     public async Task<IActionResult> List(
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 20,
-        [FromQuery] string? status = null,
-        [FromQuery] string? search = null,
+        [FromQuery, Range(1, int.MaxValue)] int page = 1,
+        [FromQuery, Range(1, 100)] int pageSize = 20,
+        [FromQuery, StringLength(30)] string? status = null,
+        [FromQuery, StringLength(100)] string? search = null,
         [FromServices] ListMembersUseCase useCase = default!,
         CancellationToken ct = default)
     {
-        MemberStatus? statusFilter = status is not null
-            ? Enum.Parse<MemberStatus>(status, ignoreCase: true)
-            : null;
+        MemberStatus? statusFilter = null;
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            if (!Enum.TryParse<MemberStatus>(status, ignoreCase: true, out var parsedStatus))
+                return BadRequest("Invalid status filter.");
 
-        var response = await useCase.ExecuteAsync(page, pageSize, statusFilter, search, ct);
+            statusFilter = parsedStatus;
+        }
+
+        var normalizedSearch = string.IsNullOrWhiteSpace(search) ? null : search.Trim();
+
+        var response = await useCase.ExecuteAsync(page, pageSize, statusFilter, normalizedSearch, ct);
         return Ok(response);
     }
 

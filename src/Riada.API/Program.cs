@@ -36,6 +36,7 @@ var jwtSecret = JwtSecretProvider.GetSecretKey();
 // Register token service for JWT generation and refresh
 builder.Services.AddSingleton<ITokenService>(sp => 
     new JwtTokenService(builder.Configuration, sp.GetRequiredService<ILogger<JwtTokenService>>()));
+builder.Services.AddSingleton<IAuthAbuseProtectionService, AuthAbuseProtectionService>();
 
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -51,6 +52,30 @@ builder.Services
             ValidAudience = jwtConfig["Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(jwtSecret),
             ClockSkew = TimeSpan.FromSeconds(30) // 30 second clock skew tolerance
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnTokenValidated = context =>
+            {
+                if (!context.HttpContext.Request.Headers.TryGetValue("Authorization", out var authorizationHeader))
+                    return Task.CompletedTask;
+
+                var rawHeader = authorizationHeader.ToString();
+                const string bearerPrefix = "Bearer ";
+                if (!rawHeader.StartsWith(bearerPrefix, StringComparison.OrdinalIgnoreCase))
+                    return Task.CompletedTask;
+
+                var token = rawHeader[bearerPrefix.Length..].Trim();
+                if (string.IsNullOrWhiteSpace(token))
+                    return Task.CompletedTask;
+
+                var tokenService = context.HttpContext.RequestServices.GetRequiredService<ITokenService>();
+                if (tokenService.IsTokenRevoked(token))
+                    context.Fail("Token has been revoked.");
+
+                return Task.CompletedTask;
+            }
         };
     });
 

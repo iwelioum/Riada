@@ -6,6 +6,7 @@ namespace Riada.Application.UseCases.Guests;
 
 public class ListGuestsUseCase
 {
+    private const int MaxPageSize = 100;
     private readonly IGuestRepository _guestRepository;
 
     public ListGuestsUseCase(IGuestRepository guestRepository)
@@ -14,6 +15,12 @@ public class ListGuestsUseCase
     public async Task<PagedResponse<GuestResponse>> ExecuteAsync(
         int page = 1, int pageSize = 50, CancellationToken ct = default)
     {
+        if (page < 1)
+            throw new ArgumentOutOfRangeException(nameof(page), "Page must be greater than or equal to 1.");
+
+        if (pageSize < 1 || pageSize > MaxPageSize)
+            throw new ArgumentOutOfRangeException(nameof(pageSize), $"Page size must be between 1 and {MaxPageSize}.");
+
         var (guests, totalCount) = await _guestRepository.GetPagedAsync(page, pageSize, ct);
 
         var dtos = guests.Select(g => new GuestResponse(

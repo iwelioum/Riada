@@ -7,6 +7,8 @@ namespace Riada.Application.UseCases.Members;
 
 public class ListMembersUseCase
 {
+    private const int MaxPageSize = 100;
+    private const int MaxSearchLength = 100;
     private readonly IMemberRepository _memberRepository;
 
     public ListMembersUseCase(IMemberRepository memberRepository)
@@ -18,8 +20,18 @@ public class ListMembersUseCase
         string? searchTerm = null,
         CancellationToken ct = default)
     {
+        if (page < 1)
+            throw new ArgumentOutOfRangeException(nameof(page), "Page must be greater than or equal to 1.");
+
+        if (pageSize < 1 || pageSize > MaxPageSize)
+            throw new ArgumentOutOfRangeException(nameof(pageSize), $"Page size must be between 1 and {MaxPageSize}.");
+
+        var normalizedSearch = string.IsNullOrWhiteSpace(searchTerm) ? null : searchTerm.Trim();
+        if (normalizedSearch is not null && normalizedSearch.Length > MaxSearchLength)
+            throw new ArgumentException($"Search term cannot exceed {MaxSearchLength} characters.", nameof(searchTerm));
+
         var (items, totalCount) = await _memberRepository.GetPagedAsync(
-            page, pageSize, statusFilter, searchTerm, ct);
+            page, pageSize, statusFilter, normalizedSearch, ct);
 
         var dtos = items.Select(m => new MemberSummaryResponse(
             m.Id, m.LastName, m.FirstName, m.Email,

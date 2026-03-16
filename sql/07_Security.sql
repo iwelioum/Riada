@@ -35,6 +35,14 @@ ALTER USER 'portique_user'@'localhost' PASSWORD EXPIRE INTERVAL 180 DAY;
 ALTER USER 'billing_user'@'localhost' PASSWORD EXPIRE INTERVAL 180 DAY;
 ALTER USER 'dpo_user'@'localhost' PASSWORD EXPIRE INTERVAL 180 DAY;
 
+ALTER USER 'portique_user'@'localhost' REQUIRE SSL;
+ALTER USER 'billing_user'@'localhost' REQUIRE SSL;
+ALTER USER 'dpo_user'@'localhost' REQUIRE SSL;
+
+ALTER USER 'portique_user'@'localhost' FAILED_LOGIN_ATTEMPTS 5 PASSWORD_LOCK_TIME 2;
+ALTER USER 'billing_user'@'localhost' FAILED_LOGIN_ATTEMPTS 5 PASSWORD_LOCK_TIME 2;
+ALTER USER 'dpo_user'@'localhost' FAILED_LOGIN_ATTEMPTS 5 PASSWORD_LOCK_TIME 2;
+
 FLUSH PRIVILEGES;
 
 SHOW GRANTS FOR 'portique_user'@'localhost';

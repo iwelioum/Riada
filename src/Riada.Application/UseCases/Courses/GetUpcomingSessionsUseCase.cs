@@ -5,6 +5,7 @@ namespace Riada.Application.UseCases.Courses;
 
 public class GetUpcomingSessionsUseCase
 {
+    private const int MaxDaysWindow = 60;
     private readonly IClassSessionRepository _sessionRepository;
 
     public GetUpcomingSessionsUseCase(IClassSessionRepository sessionRepository)
@@ -12,6 +13,9 @@ public class GetUpcomingSessionsUseCase
 
     public async Task<IReadOnlyList<SessionResponse>> ExecuteAsync(uint clubId, int days = 14, CancellationToken ct = default)
     {
+        if (days < 1 || days > MaxDaysWindow)
+            throw new ArgumentOutOfRangeException(nameof(days), $"Days must be between 1 and {MaxDaysWindow}.");
+
         var sessions = await _sessionRepository.GetUpcomingByClubAsync(clubId, days, ct);
 
         return sessions.Select(s => new SessionResponse(

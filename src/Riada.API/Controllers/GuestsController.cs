@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Riada.Application.DTOs.Requests.Guests;
@@ -12,8 +13,8 @@ public class GuestsController : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> List(
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 50,
+        [FromQuery, Range(1, int.MaxValue)] int page = 1,
+        [FromQuery, Range(1, 100)] int pageSize = 50,
         [FromServices] ListGuestsUseCase useCase = default!,
         CancellationToken ct = default)
     {

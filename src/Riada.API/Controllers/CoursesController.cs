@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Riada.Application.DTOs.Requests.Courses;
@@ -13,7 +14,7 @@ public class CoursesController : ControllerBase
     [HttpGet("sessions")]
     public async Task<IActionResult> GetUpcomingSessions(
         [FromQuery] uint clubId,
-        [FromQuery] int days = 14,
+        [FromQuery, Range(1, 60)] int days = 14,
         [FromServices] GetUpcomingSessionsUseCase useCase = default!,
         CancellationToken ct = default)
     {

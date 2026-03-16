@@ -1,6 +1,4 @@
-using System.Security.Cryptography;
 using System.IdentityModel.Tokens.Jwt;
-using System.Text;
 using Xunit;
 using Riada.API.Security;
 using Microsoft.Extensions.Configuration;
@@ -9,10 +7,11 @@ using Moq;
 
 namespace Riada.UnitTests.Security;
 
-public class JwtSecurityTests
+public class JwtSecurityTests : IDisposable
 {
     private readonly IConfiguration _configuration;
     private readonly ILogger<JwtTokenService> _mockLogger;
+    private readonly string _revocationStorePath;
 
     public JwtSecurityTests()
     {
@@ -20,12 +19,17 @@ public class JwtSecurityTests
         var testSecret = "cH3p3BnH10eNneSEFbRmjKQJYpUcuzxv4OL21rTv+p8=";
         Environment.SetEnvironmentVariable("JWT_SECRET_KEY", testSecret);
 
-        var configDict = new Dictionary<string, string>
+        _revocationStorePath = Path.Combine(
+            Path.GetTempPath(),
+            $"riada-jwt-revocations-{Guid.NewGuid():N}.json");
+
+        var configDict = new Dictionary<string, string?>
         {
             { "Jwt:Issuer", "Riada.API" },
             { "Jwt:Audience", "Riada.Clients" },
             { "Jwt:AccessTokenExpirationMinutes", "60" },
-            { "Jwt:RefreshTokenExpirationDays", "7" }
+            { "Jwt:RefreshTokenExpirationDays", "7" },
+            { "Jwt:RevocationStorePath", _revocationStorePath }
         };
 
         _configuration = new ConfigurationBuilder()
@@ -33,6 +37,12 @@ public class JwtSecurityTests
             .Build();
 
         _mockLogger = new Mock<ILogger<JwtTokenService>>().Object;
+    }
+
+    public void Dispose()
+    {
+        if (File.Exists(_revocationStorePath))
+            File.Delete(_revocationStorePath);
     }
 
     [Fact]
@@ -182,6 +192,56 @@ public class JwtSecurityTests
 
         // Assert: Old refresh token should be invalid
         Assert.False(service.ValidateRefreshToken(tokens.RefreshToken));
+    }
+
+    [Fact]
+    public void JwtTokenService_RevokeToken_MarksAccessTokenAsRevoked()
+    {
+        // Arrange
+        var service = new JwtTokenService(_configuration, _mockLogger);
+        var tokens = service.GenerateToken("test-user", new[] { "admin" });
+
+        // Act
+        service.RevokeToken(tokens.AccessToken);
+
+        // Assert
+        Assert.True(service.IsTokenRevoked(tokens.AccessToken));
+    }
+
+    [Fact]
+    public void JwtTokenService_GetUserId_ReturnsTokenSubject()
+    {
+        // Arrange
+        var service = new JwtTokenService(_configuration, _mockLogger);
+        var tokens = service.GenerateToken("subject-user", new[] { "admin" });
+
+        // Act
+        var extractedUserId = service.GetUserId(tokens.RefreshToken);
+
+        // Assert
+        Assert.Equal("subject-user", extractedUserId);
+    }
+
+    [Fact]
+    public void JwtTokenService_RefreshToken_PreservesRoleClaims()
+    {
+        // Arrange
+        var service = new JwtTokenService(_configuration, _mockLogger);
+        var initialTokens = service.GenerateToken("test-user", new[] { "admin", "billing" });
+
+        // Act
+        var refreshedTokens = service.RefreshToken(initialTokens.RefreshToken);
+
+        // Assert
+        var handler = new JwtSecurityTokenHandler();
+        var refreshedAccessToken = handler.ReadJwtToken(refreshedTokens.AccessToken);
+        var roleClaims = refreshedAccessToken.Claims
+            .Where(c => c.Type == "role")
+            .Select(c => c.Value)
+            .ToArray();
+
+        Assert.Contains("admin", roleClaims);
+        Assert.Contains("billing", roleClaims);
     }
 
     [Fact]

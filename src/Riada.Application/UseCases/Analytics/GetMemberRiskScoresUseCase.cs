@@ -10,6 +10,7 @@ namespace Riada.Application.UseCases.Analytics;
 /// </summary>
 public class GetMemberRiskScoresUseCase
 {
+    private const int MaxLimit = 200;
     private readonly string _connectionString;
 
     public GetMemberRiskScoresUseCase(string connectionString)
@@ -17,6 +18,9 @@ public class GetMemberRiskScoresUseCase
 
     public async Task<IReadOnlyList<MemberRiskScoreResponse>> ExecuteAsync(int limit = 25, CancellationToken ct = default)
     {
+        if (limit < 1 || limit > MaxLimit)
+            throw new ArgumentOutOfRangeException(nameof(limit), $"Limit must be between 1 and {MaxLimit}.");
+
         const string sql = """
             WITH overdue_by_contract AS (
                 SELECT

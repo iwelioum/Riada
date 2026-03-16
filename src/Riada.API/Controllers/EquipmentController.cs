@@ -1,7 +1,9 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Riada.Application.DTOs.Requests.Equipment;
 using Riada.Application.UseCases.Equipment;
+using Riada.Domain.Enums;
 
 namespace Riada.API.Controllers;
 
@@ -13,11 +15,19 @@ public class EquipmentController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> List(
         [FromQuery] uint? clubId,
-        [FromQuery] string? status = null,
+        [FromQuery, StringLength(30)] string? status = null,
         [FromServices] ListEquipmentUseCase useCase = default!,
         CancellationToken ct = default)
     {
-        var request = new ListEquipmentRequest(clubId, status);
+        string? normalizedStatus = null;
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            normalizedStatus = status.Trim();
+            if (!Enum.TryParse<EquipmentStatus>(normalizedStatus, ignoreCase: true, out _))
+                return BadRequest("Invalid equipment status filter.");
+        }
+
+        var request = new ListEquipmentRequest(clubId, normalizedStatus);
         var response = await useCase.ExecuteAsync(request, ct);
         return Ok(response);
     }
