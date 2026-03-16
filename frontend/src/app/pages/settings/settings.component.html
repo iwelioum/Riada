@@ -1,4 +1,176 @@
-<div class="page-container">
-  <h2>Settings</h2>
-  <p>This page is under development.</p>
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="eyebrow">Administration</div>
+      <h1>Settings</h1>
+      <p class="text-muted">Configuration centrale pour les opérations, alertes et automatisations du club.</p>
+    </div>
+
+    <div class="header-actions">
+      <button class="pill ghost" (click)="loadReferenceData()" [disabled]="loadingReferences || saving">Reload</button>
+      <button class="pill ghost" (click)="runConfigurationAudit()" [disabled]="loadingReferences || saving">Run audit</button>
+      <label class="profile-picker">
+        Profile
+        <select [(ngModel)]="selectedProfileId" [disabled]="loadingReferences || saving">
+          <option *ngFor="let profile of profiles" [ngValue]="profile.id">{{ profile.label }}</option>
+        </select>
+      </label>
+      <button class="pill ghost" (click)="applySelectedProfile()" [disabled]="loadingReferences || saving">Apply profile</button>
+      <button class="pill ghost" (click)="resetChanges()" [disabled]="!hasUnsavedChanges || saving">Reset</button>
+      <button class="pill solid" (click)="saveSettings()" [disabled]="!canSave">
+        {{ saving ? 'Saving...' : 'Save changes' }}
+      </button>
+    </div>
+  </div>
+
+  <div class="alert warning" *ngIf="loadWarning">{{ loadWarning }}</div>
+  <div class="alert error" *ngIf="formError">{{ formError }}</div>
+  <div class="alert success" *ngIf="auditNotice">{{ auditNotice }}</div>
+  <div class="alert success" *ngIf="saveNotice">{{ saveNotice }}</div>
+  <div class="card validation-summary" *ngIf="formIssues.length && !loadingReferences">
+    <div class="summary-title">{{ formIssues.length }} checks to review before saving</div>
+    <ul>
+      <li *ngFor="let issue of formIssues">{{ issue.message }}</li>
+    </ul>
+  </div>
+
+  <div class="card loading" *ngIf="loadingReferences">Loading configuration references...</div>
+
+  <ng-container *ngIf="!loadingReferences">
+    <div class="grid-3">
+      <div class="card stat">
+        <div class="stat-label">Default club</div>
+        <div class="stat-value">{{ selectedClubName }}</div>
+        <div class="text-muted">Primary context for admin workflows</div>
+      </div>
+      <div class="card stat">
+        <div class="stat-label">Default plan</div>
+        <div class="stat-value">{{ selectedPlanName }}</div>
+        <div class="text-muted">Assigned during quick contract creation</div>
+      </div>
+      <div class="card stat">
+        <div class="stat-label">Automation level</div>
+        <div class="stat-value">{{ automationReadiness }}</div>
+        <div class="text-muted">
+          System status: {{ health?.status || 'Unavailable' }}
+          <span *ngIf="lastSavedAt">· Last saved {{ lastSavedAt | date:'shortTime' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card profile-card" *ngIf="selectedProfile as profile">
+      <div class="profile-title">{{ profile.label }}</div>
+      <p class="text-muted">{{ profile.description }}</p>
+    </div>
+
+    <div class="settings-layout">
+      <aside class="card tabs">
+        <button
+          type="button"
+          *ngFor="let tab of tabs"
+          class="tab-btn"
+          [class.active]="tab.id === activeTab"
+          (click)="setActiveTab(tab.id)"
+        >
+          <div class="tab-label">{{ tab.label }}</div>
+          <div class="tab-description">{{ tab.description }}</div>
+        </button>
+      </aside>
+
+      <section class="card panel" [ngSwitch]="activeTab">
+        <ng-container *ngSwitchCase="'operations'">
+          <h3>Operations defaults</h3>
+          <p class="text-muted">Define baseline values used by front desk and planning teams.</p>
+
+          <div class="form-grid">
+            <label>
+              Default club
+              <select [(ngModel)]="form.defaultClubId" (ngModelChange)="onFormChange()">
+                <option [ngValue]="null">Select a club</option>
+                <option *ngFor="let club of clubs" [ngValue]="club.id">{{ club.name }}</option>
+              </select>
+            </label>
+
+            <label>
+              Default subscription plan
+              <select [(ngModel)]="form.defaultPlanId" (ngModelChange)="onFormChange()">
+                <option [ngValue]="null">Select a plan</option>
+                <option *ngFor="let plan of plans" [ngValue]="plan.id">{{ plan.planName }}</option>
+              </select>
+            </label>
+
+            <label>
+              Planning window (days)
+              <input type="number" [(ngModel)]="form.planningWindowDays" min="7" max="120" (ngModelChange)="onFormChange()" />
+            </label>
+
+            <label>
+              Max guest passes / member / month
+              <input
+                type="number"
+                [(ngModel)]="form.maxGuestPassesPerMember"
+                min="0"
+                max="12"
+                (ngModelChange)="onFormChange()"
+              />
+            </label>
+          </div>
+        </ng-container>
+
+        <ng-container *ngSwitchCase="'notifications'">
+          <h3>Notifications policy</h3>
+          <p class="text-muted">Tune proactive alerts and digests for member follow-up workflows.</p>
+
+          <div class="form-grid">
+            <label>
+              Churn alert threshold
+              <input type="number" [(ngModel)]="form.churnAlertThreshold" min="40" max="95" (ngModelChange)="onFormChange()" />
+              <span class="hint">{{ riskSensitivityLabel }}</span>
+            </label>
+
+            <label class="checkbox-row">
+              <input type="checkbox" [(ngModel)]="form.dailyDigestEnabled" (ngModelChange)="onFormChange()" />
+              Enable daily operational digest
+            </label>
+
+            <label>
+              Digest delivery time
+              <input type="time" [(ngModel)]="form.digestHour" [disabled]="!form.dailyDigestEnabled" (ngModelChange)="onFormChange()" />
+            </label>
+          </div>
+        </ng-container>
+
+        <ng-container *ngSwitchCase="'automation'">
+          <h3>Automation workflows</h3>
+          <p class="text-muted">Configure recurring admin automations for billing and communication.</p>
+
+          <div class="form-grid">
+            <label class="checkbox-row">
+              <input type="checkbox" [(ngModel)]="form.autoInvoiceGeneration" (ngModelChange)="onFormChange()" />
+              Auto-generate monthly invoices
+            </label>
+
+            <label class="checkbox-row">
+              <input type="checkbox" [(ngModel)]="form.autoEscalateMessages" (ngModelChange)="onFormChange()" />
+              Auto-escalate unresolved high-priority messages
+            </label>
+
+            <label>
+              Maintenance reminder lead time (days)
+              <input type="number" [(ngModel)]="form.maintenanceLeadDays" min="3" max="60" (ngModelChange)="onFormChange()" />
+            </label>
+          </div>
+
+          <div class="automation-summary">
+            <div class="summary-title">Current automation outlook</div>
+            <ul>
+              <li>Pending invoices tracked: {{ health?.pendingInvoices ?? 0 }}</li>
+              <li>Digest emails: {{ form.dailyDigestEnabled ? 'enabled' : 'disabled' }} at {{ form.digestHour }}</li>
+              <li>Message escalation: {{ form.autoEscalateMessages ? 'automatic' : 'manual handling' }}</li>
+            </ul>
+          </div>
+        </ng-container>
+      </section>
+    </div>
+  </ng-container>
 </div>

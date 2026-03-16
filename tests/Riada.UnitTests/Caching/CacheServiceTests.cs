@@ -4,6 +4,7 @@ using Xunit;
 using Riada.Application.Caching;
 using Riada.Domain.Entities.Membership;
 using Microsoft.Extensions.Caching.Distributed;
+using System.Text;
 using System.Text.Json;
 
 namespace Riada.UnitTests.Caching;
@@ -28,8 +29,8 @@ public class CacheServiceTests
         var serializedData = JsonSerializer.Serialize(member);
 
         _cacheMock
-            .Setup(c => c.GetStringAsync(key, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(serializedData);
+            .Setup(c => c.GetAsync(key, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Encoding.UTF8.GetBytes(serializedData));
 
         // Act
         var result = await _cacheService.GetAsync<Member>(key);
@@ -37,7 +38,7 @@ public class CacheServiceTests
         // Assert
         result.Should().NotBeNull();
         result!.FirstName.Should().Be("John");
-        _cacheMock.Verify(c => c.GetStringAsync(key, It.IsAny<CancellationToken>()), Times.Once);
+        _cacheMock.Verify(c => c.GetAsync(key, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -47,8 +48,8 @@ public class CacheServiceTests
         var key = "member:999";
 
         _cacheMock
-            .Setup(c => c.GetStringAsync(key, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((string?)null);
+            .Setup(c => c.GetAsync(key, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((byte[]?)null);
 
         // Act
         var result = await _cacheService.GetAsync<Member>(key);
@@ -66,7 +67,7 @@ public class CacheServiceTests
         var expiration = TimeSpan.FromHours(1);
 
         _cacheMock
-            .Setup(c => c.SetStringAsync(key, It.IsAny<string>(), It.IsAny<DistributedCacheEntryOptions>(), It.IsAny<CancellationToken>()))
+            .Setup(c => c.SetAsync(key, It.IsAny<byte[]>(), It.IsAny<DistributedCacheEntryOptions>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         // Act
@@ -74,7 +75,7 @@ public class CacheServiceTests
 
         // Assert
         _cacheMock.Verify(
-            c => c.SetStringAsync(key, It.IsAny<string>(), It.IsAny<DistributedCacheEntryOptions>(), It.IsAny<CancellationToken>()),
+            c => c.SetAsync(key, It.IsAny<byte[]>(), It.IsAny<DistributedCacheEntryOptions>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -103,7 +104,7 @@ public class CacheServiceTests
         var member = new Member { Id = 4, FirstName = "Bob", LastName = "Johnson" };
 
         _cacheMock
-            .Setup(c => c.SetStringAsync(key, It.IsAny<string>(), It.IsAny<DistributedCacheEntryOptions>(), It.IsAny<CancellationToken>()))
+            .Setup(c => c.SetAsync(key, It.IsAny<byte[]>(), It.IsAny<DistributedCacheEntryOptions>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("Cache service unavailable"));
 
         // Act & Assert
@@ -119,8 +120,8 @@ public class CacheServiceTests
         var invalidData = "not valid json";
 
         _cacheMock
-            .Setup(c => c.GetStringAsync(key, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(invalidData);
+            .Setup(c => c.GetAsync(key, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Encoding.UTF8.GetBytes(invalidData));
 
         // Act
         var result = await _cacheService.GetAsync<Member>(key);
@@ -137,12 +138,12 @@ public class CacheServiceTests
         var member = new Member { Id = 6, FirstName = "Carol", LastName = "White" };
 
         _cacheMock
-            .Setup(c => c.GetStringAsync(key, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((string?)null)
+            .Setup(c => c.GetAsync(key, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((byte[]?)null)
             .Verifiable();
 
         _cacheMock
-            .Setup(c => c.SetStringAsync(key, It.IsAny<string>(), It.IsAny<DistributedCacheEntryOptions>(), It.IsAny<CancellationToken>()))
+            .Setup(c => c.SetAsync(key, It.IsAny<byte[]>(), It.IsAny<DistributedCacheEntryOptions>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask)
             .Verifiable();
 
@@ -154,9 +155,9 @@ public class CacheServiceTests
         }
 
         // Assert
-        _cacheMock.Verify(c => c.GetStringAsync(key, It.IsAny<CancellationToken>()), Times.Once);
+        _cacheMock.Verify(c => c.GetAsync(key, It.IsAny<CancellationToken>()), Times.Once);
         _cacheMock.Verify(
-            c => c.SetStringAsync(key, It.IsAny<string>(), It.IsAny<DistributedCacheEntryOptions>(), It.IsAny<CancellationToken>()),
+            c => c.SetAsync(key, It.IsAny<byte[]>(), It.IsAny<DistributedCacheEntryOptions>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 }

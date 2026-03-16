@@ -7,7 +7,10 @@
 .btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; }
 .btn-primary { background: #6366f1; color: #fff; }
 .btn-secondary { background: #e5e7eb; color: #111827; }
+.btn-light { background: #f3f4f6; color: #111827; margin-left: 6px; }
 .table-section { margin-top: 12px; }
 .loading, .empty-state { padding: 10px; color: #6b7280; }
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: 10px; border-bottom: 1px solid #e5e7eb; text-align: left; }
+.error { color: #991b1b; background: #fee2e2; border: 1px solid #fecaca; border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; }
+.success { color: #065f46; background: #d1fae5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; }

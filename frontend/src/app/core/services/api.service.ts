@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
+import { environment } from '../../../environments/environment';
 import {
   AccessCheckRequest,
   AccessCheckResponse,
@@ -34,7 +35,7 @@ import {
   providedIn: 'root'
 })
 export class ApiService {
-  private apiUrl = 'https://localhost:7001/api';
+  private readonly apiUrl = environment.apiUrl;
 
   constructor(private http: HttpClient) { }
 
@@ -78,6 +79,106 @@ export class ApiService {
         freezeEndDate: c.freezeEndDate ?? c.FreezeEndDate,
         options: c.options ?? c.Options ?? []
       }))
+    };
+  }
+
+  private toInvoiceDetail(dto: any): InvoiceDetail {
+    return {
+      id: dto.id ?? dto.Id,
+      invoiceNumber: dto.invoiceNumber ?? dto.InvoiceNumber ?? '',
+      issuedOn: dto.issuedOn ?? dto.IssuedOn,
+      dueDate: dto.dueDate ?? dto.DueDate,
+      billingPeriodStart: dto.billingPeriodStart ?? dto.BillingPeriodStart,
+      billingPeriodEnd: dto.billingPeriodEnd ?? dto.BillingPeriodEnd,
+      amountExclTax: dto.amountExclTax ?? dto.AmountExclTax ?? 0,
+      vatRate: dto.vatRate ?? dto.VatRate ?? 0,
+      vatAmount: dto.vatAmount ?? dto.VatAmount ?? 0,
+      amountInclTax: dto.amountInclTax ?? dto.AmountInclTax ?? 0,
+      amountPaid: dto.amountPaid ?? dto.AmountPaid ?? 0,
+      balanceDue: dto.balanceDue ?? dto.BalanceDue ?? 0,
+      status: dto.status ?? dto.Status ?? 'Unknown',
+      lines: (dto.lines ?? dto.Lines ?? []).map((line: any) => ({
+        description: line.description ?? line.Description ?? '',
+        lineType: line.lineType ?? line.LineType ?? '',
+        quantity: line.quantity ?? line.Quantity ?? 0,
+        unitPriceExclTax: line.unitPriceExclTax ?? line.UnitPriceExclTax ?? 0,
+        lineAmountInclTax: line.lineAmountInclTax ?? line.LineAmountInclTax ?? 0
+      })),
+      payments: (dto.payments ?? dto.Payments ?? []).map((payment: any) => ({
+        id: payment.id ?? payment.Id ?? 0,
+        paidAt: payment.paidAt ?? payment.PaidAt ?? '',
+        amount: payment.amount ?? payment.Amount ?? 0,
+        status: payment.status ?? payment.Status ?? 'Unknown',
+        paymentMethod: payment.paymentMethod ?? payment.PaymentMethod ?? 'Unknown',
+        transactionReference: payment.transactionReference ?? payment.TransactionReference
+      }))
+    };
+  }
+
+  private toEquipmentItem(dto: any): EquipmentItem {
+    return {
+      id: dto.id ?? dto.Id,
+      name: dto.name ?? dto.Name ?? '',
+      equipmentType: dto.equipmentType ?? dto.EquipmentType ?? '',
+      status: dto.status ?? dto.Status ?? '',
+      clubId: dto.clubId ?? dto.ClubId ?? 0,
+      acquisitionYear: dto.acquisitionYear ?? dto.AcquisitionYear ?? 0
+    };
+  }
+
+  private toClubSummary(dto: any): ClubSummary {
+    return {
+      id: dto.id ?? dto.Id,
+      name: dto.name ?? dto.Name ?? '',
+      addressCity: dto.addressCity ?? dto.AddressCity,
+      operationalStatus: dto.operationalStatus ?? dto.OperationalStatus,
+      isOpen247: dto.isOpen247 ?? dto.IsOpen247
+    };
+  }
+
+  private toClubDashboard(dto: any): ClubDashboard {
+    return {
+      id: dto.id ?? dto.Id,
+      name: dto.name ?? dto.Name ?? '',
+      addressStreet: dto.addressStreet ?? dto.AddressStreet,
+      addressCity: dto.addressCity ?? dto.AddressCity,
+      addressPostalCode: dto.addressPostalCode ?? dto.AddressPostalCode,
+      operationalStatus: dto.operationalStatus ?? dto.OperationalStatus,
+      employeeCount: dto.employeeCount ?? dto.EmployeeCount ?? 0,
+      equipmentCount: dto.equipmentCount ?? dto.EquipmentCount ?? 0
+    };
+  }
+
+  private toSubscriptionPlan(dto: any): SubscriptionPlan {
+    return {
+      id: dto.id ?? dto.Id,
+      planName: dto.planName ?? dto.PlanName ?? '',
+      basePrice: dto.basePrice ?? dto.BasePrice ?? 0,
+      commitmentMonths: dto.commitmentMonths ?? dto.CommitmentMonths ?? 0,
+      enrollmentFee: dto.enrollmentFee ?? dto.EnrollmentFee ?? 0,
+      limitedClubAccess: dto.limitedClubAccess ?? dto.LimitedClubAccess ?? false,
+      duoPassAllowed: dto.duoPassAllowed ?? dto.DuoPassAllowed ?? false
+    };
+  }
+
+  private toSubscriptionPlanOption(dto: any): SubscriptionPlanOption {
+    return {
+      id: dto.id ?? dto.Id,
+      optionName: dto.optionName ?? dto.OptionName ?? '',
+      monthlyPrice: dto.monthlyPrice ?? dto.MonthlyPrice ?? 0
+    };
+  }
+
+  private toGuest(dto: any): Guest {
+    return {
+      id: dto.id ?? dto.Id,
+      firstName: dto.firstName ?? dto.FirstName ?? '',
+      lastName: dto.lastName ?? dto.LastName ?? '',
+      status: dto.status ?? dto.Status ?? 'Unknown',
+      email: dto.email ?? dto.Email,
+      dateOfBirth: dto.dateOfBirth ?? dto.DateOfBirth,
+      sponsorMemberId: dto.sponsorMemberId ?? dto.SponsorMemberId,
+      sponsorName: dto.sponsorName ?? dto.SponsorName
     };
   }
 
@@ -170,7 +271,7 @@ export class ApiService {
     const params = new HttpParams().set('clubId', clubId).set('days', days);
     return this.http.get<any[]>(`${this.apiUrl}/Courses/sessions`, { params }).pipe(
       map((sessions) =>
-        sessions.map((s) => ({
+        (sessions ?? []).map((s) => ({
           id: s.id ?? s.Id,
           courseName: s.courseName ?? s.CourseName,
           instructorName: s.instructorName ?? s.InstructorName,
@@ -205,7 +306,9 @@ export class ApiService {
   }
 
   getInvoiceDetail(id: number): Observable<InvoiceDetail> {
-    return this.http.get<InvoiceDetail>(`${this.apiUrl}/Billing/invoices/${id}`);
+    return this.http.get<any>(`${this.apiUrl}/Billing/invoices/${id}`).pipe(
+      map((dto) => this.toInvoiceDetail(dto))
+    );
   }
 
   recordPayment(payload: RecordPaymentPayload): Observable<any> {
@@ -218,7 +321,9 @@ export class ApiService {
     if (filters?.clubId) params = params.set('clubId', filters.clubId);
     if (filters?.status) params = params.set('status', filters.status);
 
-    return this.http.get<EquipmentItem[]>(`${this.apiUrl}/Equipment`, { params });
+    return this.http.get<any[]>(`${this.apiUrl}/Equipment`, { params }).pipe(
+      map((items) => (items ?? []).map((item: any) => this.toEquipmentItem(item)))
+    );
   }
 
   createMaintenanceTicket(payload: CreateMaintenanceTicketPayload): Observable<any> {
@@ -316,27 +421,39 @@ export class ApiService {
 
   // Clubs / Plans / Guests
   listClubs(): Observable<ClubSummary[]> {
-    return this.http.get<ClubSummary[]>(`${this.apiUrl}/Clubs`);
+    return this.http.get<any[]>(`${this.apiUrl}/Clubs`).pipe(
+      map((clubs) => (clubs ?? []).map((club: any) => this.toClubSummary(club)))
+    );
   }
 
   getClubDashboard(id: number): Observable<ClubDashboard> {
-    return this.http.get<ClubDashboard>(`${this.apiUrl}/Clubs/${id}`);
+    return this.http.get<any>(`${this.apiUrl}/Clubs/${id}`).pipe(
+      map((club) => this.toClubDashboard(club))
+    );
   }
 
   listSubscriptionPlans(): Observable<SubscriptionPlan[]> {
-    return this.http.get<SubscriptionPlan[]>(`${this.apiUrl}/plans`);
+    return this.http.get<any[]>(`${this.apiUrl}/plans`).pipe(
+      map((plans) => (plans ?? []).map((plan: any) => this.toSubscriptionPlan(plan)))
+    );
   }
 
   getPlanOptions(planId: number): Observable<SubscriptionPlanOption[]> {
-    return this.http.get<SubscriptionPlanOption[]>(`${this.apiUrl}/plans/${planId}/options`);
+    return this.http.get<any[]>(`${this.apiUrl}/plans/${planId}/options`).pipe(
+      map((options) => (options ?? []).map((option: any) => this.toSubscriptionPlanOption(option)))
+    );
   }
 
   listGuests(): Observable<Guest[]> {
-    return this.http.get<Guest[]>(`${this.apiUrl}/Guests`);
+    return this.http.get<any[]>(`${this.apiUrl}/Guests`).pipe(
+      map((guests) => (guests ?? []).map((guest: any) => this.toGuest(guest)))
+    );
   }
 
   registerGuest(payload: { sponsorMemberId: number; lastName: string; firstName: string; dateOfBirth: string; email?: string | null }): Observable<Guest> {
-    return this.http.post<Guest>(`${this.apiUrl}/Guests`, payload);
+    return this.http.post<any>(`${this.apiUrl}/Guests`, payload).pipe(
+      map((guest) => this.toGuest(guest))
+    );
   }
 
   banGuest(id: number): Observable<{ message: string }> {
@@ -347,7 +464,7 @@ export class ApiService {
 
   // Health Check
   health(): Observable<any> {
-    const apiRoot = this.apiUrl.replace('/api', '');
+    const apiRoot = this.apiUrl.replace(/\/api$/, '');
     return this.http.get<any>(`${apiRoot}/health`);
   }
 }

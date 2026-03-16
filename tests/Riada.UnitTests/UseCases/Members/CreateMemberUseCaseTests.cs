@@ -4,7 +4,7 @@ using Moq;
 using Riada.Application.DTOs.Requests.Members;
 using Riada.Application.Events;
 using Riada.Application.UseCases.Members;
-using Riada.Application.Validators;
+using Riada.Application.Validators.Members;
 using Riada.Domain.Entities.Membership;
 using Riada.Domain.Enums;
 using Riada.Domain.Interfaces.Common;
@@ -17,8 +17,18 @@ public class CreateMemberUseCaseTests
 {
     private readonly Mock<IMemberRepository> _memberRepositoryMock = new();
     private readonly Mock<IUnitOfWork> _unitOfWorkMock = new();
-    private readonly IValidator<CreateMemberRequest> _validator = new CreateMemberValidator();
+    private readonly Mock<IGenericRepository<Member>> _genericMemberRepositoryMock = new();
+    private readonly IValidator<CreateMemberRequest> _validator;
     private readonly Mock<IMemberEventDispatcher> _memberEventDispatcherMock = new();
+
+    public CreateMemberUseCaseTests()
+    {
+        _genericMemberRepositoryMock
+            .Setup(r => r.FindAsync(It.IsAny<System.Linq.Expressions.Expression<Func<Member, bool>>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Array.Empty<Member>());
+
+        _validator = new CreateMemberRequestValidator(_genericMemberRepositoryMock.Object);
+    }
 
     private CreateMemberUseCase CreateSut()
     {

@@ -6,8 +6,58 @@
         Invoice ID:
         <input type="number" [(ngModel)]="invoiceIdInput" min="1">
       </label>
-      <button class="btn btn-secondary" (click)="loadInvoices()">Load Invoice</button>
-      <button class="btn btn-primary" (click)="generateInvoice()">Generate Current Month</button>
+      <button class="btn btn-secondary" (click)="loadInvoices()" [disabled]="loading || generatingInvoice || recordingPayment">Load Invoice</button>
+    </div>
+  </div>
+
+  <div class="generation-form">
+    <label>
+      Club ID
+      <input type="number" min="1" [(ngModel)]="generateForm.clubId">
+    </label>
+    <label>
+      Year
+      <input type="number" min="2000" [(ngModel)]="generateForm.periodYear">
+    </label>
+    <label>
+      Month
+      <input type="number" min="1" max="12" [(ngModel)]="generateForm.periodMonth">
+    </label>
+    <button class="btn btn-primary" (click)="generateInvoice()" [disabled]="generatingInvoice || loading || recordingPayment">
+      {{ generatingInvoice ? 'Generating...' : 'Generate Invoice' }}
+    </button>
+  </div>
+
+  <div class="loading" *ngIf="generatingInvoice">Generating invoice...</div>
+  <div class="loading" *ngIf="recordingPayment">Recording payment...</div>
+  <div class="text-muted" *ngIf="!invoiceLookupAttempted">Enter an invoice ID to load billing details.</div>
+  <div class="success" *ngIf="successMessage">{{ successMessage }}</div>
+  <div class="error" *ngIf="generateError">{{ generateError }}</div>
+  <div class="error" *ngIf="paymentError">{{ paymentError }}</div>
+  <div class="error" *ngIf="lastError && !loading">{{ lastError }}</div>
+
+  <div class="payment-form" *ngIf="activePaymentInvoiceId">
+    <h4>Record payment for invoice #{{ activePaymentInvoiceId }}</h4>
+    <div class="actions-inline">
+      <label>
+        Amount
+        <input type="number" min="0.01" step="0.01" [(ngModel)]="paymentForm.amount">
+      </label>
+      <span class="text-muted" *ngIf="selectedInvoice as invoiceForPayment">
+        Balance due: ${{ invoiceForPayment.balanceDue | number:'1.2-2' }}
+      </span>
+      <label>
+        Method
+        <input type="text" [(ngModel)]="paymentForm.paymentMethod" placeholder="Manual, Card, Transfer..." />
+      </label>
+      <label>
+        Reference
+        <input type="text" [(ngModel)]="paymentForm.transactionReference" placeholder="Optional transaction id" />
+      </label>
+      <button class="btn btn-primary" (click)="submitPayment()" [disabled]="recordingPayment">
+        {{ recordingPayment ? 'Recording...' : 'Record Payment' }}
+      </button>
+      <button class="btn btn-secondary" (click)="cancelPaymentForm()" [disabled]="recordingPayment">Cancel</button>
     </div>
   </div>
 
@@ -27,7 +77,6 @@
   </div>
 
   <div class="loading" *ngIf="loading">Loading invoices...</div>
-  <div class="error" *ngIf="lastError && !loading">{{ lastError }}</div>
   
   <table *ngIf="!loading && invoices.length > 0">
     <thead>
@@ -56,7 +105,7 @@
         <td>{{ invoice.issuedOn | date:'short' }}</td>
         <td>{{ invoice.dueDate | date:'short' }}</td>
         <td>
-          <button class="btn btn-sm" (click)="recordPayment(invoice.id)" *ngIf="invoice.status !== 'Paid'">
+          <button class="btn btn-sm" (click)="openPaymentForm(invoice)" *ngIf="invoice.status !== 'Paid'" [disabled]="recordingPayment || generatingInvoice">
             Record Payment
           </button>
           <span *ngIf="invoice.status === 'Paid'" class="text-muted">Paid</span>
@@ -65,13 +114,13 @@
     </tbody>
   </table>
 
-  <div class="empty-state" *ngIf="!loading && invoices.length === 0">
+  <div class="empty-state" *ngIf="!loading && hasLoadedInvoice && invoices.length === 0 && invoiceLookupAttempted && !lastError">
     <p>No invoices found.</p>
   </div>
 
-  <div *ngIf="invoices.length" class="invoice-detail">
+  <div *ngIf="selectedInvoice as invoice" class="invoice-detail">
     <h3>Invoice lines</h3>
-    <table>
+    <table *ngIf="invoice.lines.length; else noLines">
       <thead>
         <tr>
           <th>Description</th>
@@ -82,7 +131,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let line of invoices[0].lines">
+        <tr *ngFor="let line of invoice.lines">
           <td>{{ line.description }}</td>
           <td>{{ line.quantity }}</td>
           <td>${{ line.unitPriceExclTax | number:'1.2-2' }}</td>
@@ -91,9 +140,12 @@
         </tr>
       </tbody>
     </table>
+    <ng-template #noLines>
+      <div class="empty-state">No invoice lines found for this invoice.</div>
+    </ng-template>
 
     <h3>Payments</h3>
-    <table *ngIf="invoices[0].payments?.length">
+    <table *ngIf="invoice.payments.length">
       <thead>
         <tr>
           <th>Paid at</th>
@@ -104,7 +156,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let payment of invoices[0].payments">
+        <tr *ngFor="let payment of invoice.payments">
           <td>{{ payment.paidAt | date:'short' }}</td>
           <td>${{ payment.amount | number:'1.2-2' }}</td>
           <td>{{ payment.status }}</td>
@@ -113,6 +165,6 @@
         </tr>
       </tbody>
     </table>
-    <div class="empty-state" *ngIf="!invoices[0].payments?.length">No payments recorded.</div>
+    <div class="empty-state" *ngIf="!invoice.payments.length">No payments recorded.</div>
   </div>
 </div>

@@ -43,7 +43,7 @@ cd ../scripts/Launch
 npm start        # Alias to npm run dev
 npm run dev      # Serve production bundle via http-server (port auto from 4200)
 npm run build    # Production build
-npm test         # Run unit tests
+npm test         # Run unit tests (auto-detect Chrome/Edge binary)
 npm run watch    # Watch mode
 npm run serve:dist # Serve existing dist/ without rebuilding
 ```
@@ -57,7 +57,9 @@ All API calls through `ApiService` with typed models:
 - Equipment: `listEquipment`, `createMaintenanceTicket`, `updateMaintenanceStatus`
 - Access/Analytics/Clubs/Plans/Guests helpers aligned with backend controllers
 
-API URL: `https://localhost:7001/api`
+API URL configuration:
+- `src/environments/environment.ts` (development)
+- `src/environments/environment.production.ts` (production)
 
 ## 📚 For More Details
 

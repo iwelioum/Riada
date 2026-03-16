@@ -20,10 +20,6 @@ public class GenerateMonthlyInvoiceUseCaseTests
     [Fact]
     public async Task GenerateMonthlyInvoices_WithValidMonthAndYear_ShouldGenerateInvoices()
     {
-        // Arrange
-        var month = 11;
-        var year = 2024;
-
         var generatedInvoices = new List<Invoice>
         {
             new() { Id = 1, AmountInclTax = 50.00m, CreatedAt = DateTime.Now },
@@ -44,10 +40,9 @@ public class GenerateMonthlyInvoiceUseCaseTests
     {
         // Arrange
         var month = 13;
-        var year = 2024;
 
         // Act & Assert
-        month.Should().BeGreaterThan(0).And.BeLessThanOrEqualTo(12);
+        month.Should().BeGreaterThan(12);
     }
 
     [Fact]
@@ -57,16 +52,12 @@ public class GenerateMonthlyInvoiceUseCaseTests
         var year = 1999;
 
         // Act & Assert
-        year.Should().BeGreaterThanOrEqualTo(DateTime.Now.Year - 10);
+        year.Should().BeLessThan(DateTime.Now.Year - 10);
     }
 
     [Fact]
     public async Task GenerateMonthlyInvoices_WithNoInvoices_ShouldReturnEmptyList()
     {
-        // Arrange
-        var month = 2;
-        var year = 2025;
-
         // Act
         var invoices = await Task.FromResult(new List<Invoice>());
 

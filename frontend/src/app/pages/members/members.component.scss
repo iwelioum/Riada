@@ -158,6 +158,27 @@
   border: 1px solid #fecaca;
 }
 
+.success {
+  color: #065f46;
+  background-color: #d1fae5;
+  border: 1px solid #a7f3d0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+
+  &.small {
+    margin: 0 0 8px 0;
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+}
+
+.error.small {
+  margin: 0 0 8px 0;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -248,6 +269,11 @@ table {
         background-color: #dc2626;
       }
     }
+
+    &.btn-secondary {
+      background-color: #e5e7eb;
+      color: #1f2937;
+    }
   }
 }
 
@@ -301,6 +327,13 @@ table {
     border: 1px solid #d1d5db;
     border-radius: 6px;
   }
+}
+
+.freeze-input {
+  width: 72px;
+  padding: 6px 8px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
 }
 
 .active-row {

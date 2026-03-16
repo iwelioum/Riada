@@ -1,3 +1,4 @@
+using FluentValidation;
 using Riada.Application.DTOs.Requests.Members;
 using Riada.Application.DTOs.Responses.Members;
 using Riada.Domain.Entities.Membership;
@@ -9,13 +10,18 @@ namespace Riada.Application.UseCases.Members;
 
 public class UpdateMemberUseCase
 {
+    private readonly IValidator<UpdateMemberRequest> _validator;
     private readonly IMemberRepository _memberRepository;
 
-    public UpdateMemberUseCase(IMemberRepository memberRepository)
-        => _memberRepository = memberRepository;
+    public UpdateMemberUseCase(IValidator<UpdateMemberRequest> validator, IMemberRepository memberRepository)
+    {
+        _validator = validator;
+        _memberRepository = memberRepository;
+    }
 
     public async Task<MemberResponse> ExecuteAsync(uint memberId, UpdateMemberRequest request, CancellationToken ct = default)
     {
+        await _validator.ValidateAndThrowAsync(request, ct);
         var member = await _memberRepository.GetByIdAsync(memberId, ct)
             ?? throw new NotFoundException("Member", memberId);
 

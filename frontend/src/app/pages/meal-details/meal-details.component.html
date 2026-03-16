@@ -3,15 +3,105 @@
     <div>
       <div class="eyebrow">Nutrition</div>
       <h1>Meal Details</h1>
-      <p class="text-muted">Focus macros et objectifs.</p>
+      <p class="text-muted">Operational nutrition detail with macros, prep steps and hydration guidance.</p>
+    </div>
+    <div class="header-actions">
+      <a class="pill ghost link-pill" routerLink="/meal-plan">Back to plan</a>
+      <button class="pill ghost" (click)="loadLocalDetails()">Refresh local</button>
+      <button class="pill solid" (click)="syncWithBackend()" [disabled]="!canSyncBackend">Sync backend</button>
     </div>
   </div>
 
-  <div class="grid-3">
-    <div class="card macro" *ngFor="let macro of macros">
-      <div class="label">{{ macro.label }}</div>
-      <div class="value">{{ macro.value }}</div>
-      <div class="text-muted">Target {{ macro.target }}</div>
+  <div class="card day-switcher">
+    <div class="switcher-title text-muted">Jump to day</div>
+    <div class="switcher-actions">
+      <a
+        class="pill link-pill"
+        *ngFor="let day of dayLinks"
+        [ngClass]="day.isActive ? 'solid' : 'ghost'"
+        [routerLink]="['/meal-plan', day.id]"
+      >
+        {{ day.dayLabel }}
+      </a>
     </div>
   </div>
+
+  <div class="source-meta text-muted" *ngIf="lastUpdated">
+    Source: {{ source }} · Updated {{ lastUpdated | date:'shortTime' }}
+  </div>
+
+  <div class="state-card error" *ngIf="state === 'error'">
+    <h3>Unable to load meal details</h3>
+    <p>{{ errorMessage }}</p>
+    <div class="state-actions">
+      <button class="pill ghost" (click)="syncWithBackend()" [disabled]="!canSyncBackend">Retry backend sync</button>
+      <button class="pill solid" (click)="useLocalFallback()">Use local details</button>
+    </div>
+  </div>
+
+  <div class="grid-3" *ngIf="state === 'loading'">
+    <div class="card macro skeleton" *ngFor="let _ of skeletonCards">
+      <div class="line w-65"></div>
+      <div class="line w-35"></div>
+      <div class="line w-80"></div>
+      <div class="line w-55"></div>
+    </div>
+  </div>
+
+  <div class="state-card" *ngIf="state === 'empty'">
+    <h3>{{ emptyReason === 'unknown-day' ? 'Meal day not found' : 'No nutrition detail available' }}</h3>
+    <p class="text-muted">
+      {{
+        emptyReason === 'unknown-day'
+          ? 'Use the day shortcuts above or return to the weekly plan to open a valid nutrition day.'
+          : 'Retry backend sync or reload local details to recover this meal-day workflow.'
+      }}
+    </p>
+    <div class="state-actions">
+      <a class="pill ghost link-pill" routerLink="/meal-plan">Back to weekly plan</a>
+      <button class="pill solid" (click)="loadLocalDetails()">Reload local details</button>
+    </div>
+  </div>
+
+  <ng-container *ngIf="state === 'ready' && daySummary">
+    <div class="card summary">
+      <div class="summary-top">
+        <div>
+          <div class="summary-day">{{ daySummary.dayLabel }}</div>
+          <div class="text-muted">Goal: {{ daySummary.goal }}</div>
+        </div>
+        <span class="prep-status" [ngClass]="daySummary.prepClass">{{ daySummary.prepStatus }}</span>
+      </div>
+      <div class="summary-meta text-muted">
+        <span>{{ daySummary.hydrationLabel }}</span>
+        <span>{{ mealRows.length }} meal(s) planned</span>
+      </div>
+      <p class="coach-note">{{ daySummary.coachNote }}</p>
+    </div>
+
+    <div class="grid-3">
+      <article class="card macro" *ngFor="let macro of macroCards">
+        <div class="label">{{ macro.label }}</div>
+        <div class="value">{{ macro.valueLabel }}</div>
+        <div class="text-muted">{{ macro.targetLabel }}</div>
+        <div class="progress-track">
+          <div class="progress-fill" [ngClass]="macro.progressClass" [style.width.%]="macro.progressPercent"></div>
+        </div>
+      </article>
+    </div>
+
+    <div class="card meals">
+      <h3>Meal execution checklist</h3>
+      <div class="meal-list">
+        <article class="meal-row" *ngFor="let meal of mealRows">
+          <div class="row-top">
+            <span class="slot">{{ meal.slot }}</span>
+            <div class="name">{{ meal.name }}</div>
+          </div>
+          <div class="text-muted">{{ meal.macroSummary }}</div>
+          <p class="tip">{{ meal.prepTip }}</p>
+        </article>
+      </div>
+    </div>
+  </ng-container>
 </div>

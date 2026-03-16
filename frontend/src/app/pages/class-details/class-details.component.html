@@ -2,16 +2,49 @@
   <div class="page-header">
     <div>
       <div class="eyebrow">Classes</div>
-      <h1>{{ title }}</h1>
+      <h1>{{ session?.courseName || 'Class details' }}</h1>
       <p class="text-muted">Détails de la session et des objectifs.</p>
     </div>
-    <button class="pill solid">Book</button>
+    <div class="actions">
+      <a class="pill ghost" routerLink="/classes">Back to classes</a>
+      <button class="pill solid" (click)="loadSession()" [disabled]="loading">Refresh</button>
+    </div>
   </div>
 
-  <div class="card">
-    <div class="detail-line"><strong>Coach</strong><span>{{ instructor }}</span></div>
-    <div class="detail-line"><strong>Durée</strong><span>{{ duration }}</span></div>
-    <div class="detail-line"><strong>Niveau</strong><span>{{ level }}</span></div>
-    <div class="detail-line"><strong>Focus</strong><span>Force, cardio, mobilité</span></div>
+  <div class="loading" *ngIf="loading">Loading class details...</div>
+  <div class="error" *ngIf="errorMessage">{{ errorMessage }}</div>
+  <div class="warn" *ngIf="warningMessage">{{ warningMessage }}</div>
+  <div class="success" *ngIf="successMessage">{{ successMessage }}</div>
+  <div class="error" *ngIf="actionError">{{ actionError }}</div>
+
+  <div class="card" *ngIf="session as currentSession">
+    <div class="detail-line"><strong>Coach</strong><span>{{ currentSession.instructorName }}</span></div>
+    <div class="detail-line"><strong>Club</strong><span>{{ currentSession.clubName }}</span></div>
+    <div class="detail-line"><strong>Start</strong><span>{{ currentSession.startsAt | date:'full' }}</span></div>
+    <div class="detail-line"><strong>Durée</strong><span>{{ currentSession.durationMinutes }} mins</span></div>
+    <div class="detail-line"><strong>Capacity</strong><span>{{ currentSession.enrolledCount }}/{{ currentSession.maxCapacity }} ({{ currentSession.occupancyPercent }}%)</span></div>
+  </div>
+
+  <div class="card" *ngIf="session">
+    <h3>Book or cancel booking</h3>
+    <div class="booking-form">
+      <label>
+        Member ID
+        <input type="number" min="1" [(ngModel)]="memberIdInput" />
+      </label>
+      <div class="text-muted" *ngIf="!canBookCurrentSession">This class is currently full. You can still cancel an existing booking.</div>
+      <div class="action-buttons">
+        <button class="pill solid" (click)="bookSession()" [disabled]="actionInProgress !== null || !canBookCurrentSession">
+          {{ actionInProgress === 'book' ? 'Booking...' : 'Book session' }}
+        </button>
+        <button class="pill ghost" (click)="cancelBooking()" [disabled]="actionInProgress !== null">
+          {{ actionInProgress === 'cancel' ? 'Cancelling...' : 'Cancel booking' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" *ngIf="!loading && !session && !errorMessage">
+    <div class="text-muted">No details available for this class yet.</div>
   </div>
 </div>

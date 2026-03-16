@@ -2,25 +2,28 @@
   <div class="page-header">
     <h2>Equipment Management</h2>
     <div class="filters">
-      <select [(ngModel)]="filters.clubId" (change)="loadEquipment()">
+      <select [(ngModel)]="filters.clubId" (change)="loadEquipment()" [disabled]="clubsLoading || loading">
         <option [ngValue]="undefined">All clubs</option>
         <option *ngFor="let club of clubs" [ngValue]="club.id">{{ club.name }}</option>
       </select>
-      <select [(ngModel)]="filters.status" (change)="loadEquipment()">
+      <select [(ngModel)]="filters.status" (change)="loadEquipment()" [disabled]="loading">
         <option value="">All status</option>
         <option value="Operational">Operational</option>
         <option value="Maintenance">Maintenance</option>
         <option value="Retired">Retired</option>
       </select>
-      <select [(ngModel)]="ticketPriority">
+      <select [(ngModel)]="ticketPriority" [disabled]="creatingTicketId !== null">
         <option value="Low">Low</option>
         <option value="Medium">Medium</option>
         <option value="High">High</option>
       </select>
-      <button class="btn btn-primary" (click)="loadEquipment()">Refresh</button>
+      <button class="btn btn-primary" (click)="loadEquipment()" [disabled]="loading || clubsLoading || creatingTicketId !== null">Refresh</button>
     </div>
   </div>
 
+  <div class="loading" *ngIf="clubsLoading">Loading clubs...</div>
+  <div class="error" *ngIf="errorMessage">{{ errorMessage }}</div>
+  <div class="success" *ngIf="successMessage">{{ successMessage }}</div>
   <div class="loading" *ngIf="loading">Loading equipment...</div>
   
   <div class="equipment-grid" *ngIf="!loading && equipment.length > 0">
@@ -37,12 +40,22 @@
         <p><strong>Acquisition Year:</strong> {{ item.acquisitionYear }}</p>
       </div>
       <div class="equipment-footer">
-        <button class="btn btn-primary" (click)="createTicket(item.id)">Report Issue</button>
+        <label class="ticket-label">
+          Maintenance issue
+          <input
+            type="text"
+            [ngModel]="ticketDescriptions[item.id] ?? ''"
+            (ngModelChange)="setTicketDescription(item.id, $event)"
+            placeholder="Describe the issue" />
+        </label>
+        <button class="btn btn-primary" (click)="createTicket(item.id)" [disabled]="!canReportIssue(item)">
+          {{ isCreatingTicket(item.id) ? 'Submitting...' : (item.status === 'Retired' ? 'Retired' : 'Report Issue') }}
+        </button>
       </div>
     </div>
   </div>
 
-  <div class="empty-state" *ngIf="!loading && equipment.length === 0">
-    <p>No equipment registered yet.</p>
+  <div class="empty-state" *ngIf="!loading && hasLoadedEquipment && equipment.length === 0">
+    <p>{{ emptyStateMessage }}</p>
   </div>
 </div>

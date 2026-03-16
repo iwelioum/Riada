@@ -5,23 +5,36 @@
       <p class="text-muted">Pilotez l’inscription, les statuts et les contrats.</p>
     </div>
     <div class="header-actions">
-      <input type="search" [(ngModel)]="filters.search" placeholder="Search by name or email" />
+      <input type="search" [(ngModel)]="filters.search" placeholder="Search by name or email" (keyup.enter)="applyFilters()" />
       <select [(ngModel)]="filters.status">
         <option value="">All statuses</option>
         <option value="Active">Active</option>
         <option value="Suspended">Suspended</option>
         <option value="Anonymized">Anonymized</option>
       </select>
-      <button class="btn btn-secondary" (click)="loadMembers()">Refresh</button>
-      <button class="btn btn-primary" (click)="openAddForm()">+ Add Member</button>
+      <button class="btn btn-secondary" (click)="applyFilters()" [disabled]="loading || metaLoading">Refresh</button>
+      <button class="btn btn-primary" (click)="openAddForm()" [disabled]="metaLoading">+ Add Member</button>
     </div>
   </div>
+
+  <div class="loading" *ngIf="metaLoading">Loading plans and clubs...</div>
+  <div class="error" *ngIf="metaError">{{ metaError }}</div>
+  <div class="empty-state small" *ngIf="!metaLoading && !metaError && (!plans.length || !clubs.length)">
+    Membership metadata is incomplete. Retry metadata loading before creating contracts.
+    <div style="margin-top: 0.5rem;">
+      <button class="btn btn-secondary" (click)="loadMeta()">Retry metadata</button>
+    </div>
+  </div>
+  <div class="error" *ngIf="actionError">{{ actionError }}</div>
+  <div class="success" *ngIf="successMessage">{{ successMessage }}</div>
 
   <!-- Add/Edit Form -->
   <div class="form-section" *ngIf="showForm">
     <div class="form-card">
       <h3>{{ editingId ? 'Edit Member' : 'Add New Member' }}</h3>
-      <form (ngSubmit)="saveMember()">
+      <div class="loading" *ngIf="formLoading">Loading member profile...</div>
+      <div class="error" *ngIf="formError">{{ formError }}</div>
+      <form (ngSubmit)="saveMember()" *ngIf="!formLoading">
         <div class="form-group">
           <label>First Name</label>
           <input type="text" [(ngModel)]="formData.firstName" name="firstName" required>
@@ -63,8 +76,8 @@
           <input type="checkbox" [(ngModel)]="formData.marketingConsent" name="marketingConsent">
         </div>
         <div class="form-actions">
-          <button type="submit" class="btn btn-success">Save</button>
-          <button type="button" class="btn btn-secondary" (click)="closeForm()">Cancel</button>
+          <button type="submit" class="btn btn-success" [disabled]="savingMember">{{ savingMember ? 'Saving...' : 'Save' }}</button>
+          <button type="button" class="btn btn-secondary" (click)="closeForm()" [disabled]="savingMember">Cancel</button>
         </div>
       </form>
     </div>
@@ -100,69 +113,86 @@
             <td>{{ member.lastVisitDate | date:'short' }}</td>
             <td>
               <div class="actions">
-                <button class="btn btn-sm" (click)="selectMember(member)">View</button>
-                <button class="btn btn-sm" (click)="editMember(member)">Edit</button>
-                <button class="btn btn-sm btn-danger" (click)="deleteMember(member.id)">Anonymize</button>
+                <button class="btn btn-sm" (click)="selectMember(member)" [disabled]="detailLoading || savingMember">View</button>
+                <button class="btn btn-sm" (click)="editMember(member)" [disabled]="detailLoading || savingMember">Edit</button>
+                <ng-container *ngIf="anonymizeConfirmId !== member.id; else confirmAnonymize">
+                  <button class="btn btn-sm btn-danger" (click)="requestDeleteMember(member.id)" [disabled]="anonymizingMemberId !== null || detailLoading">Anonymize</button>
+                </ng-container>
+                <ng-template #confirmAnonymize>
+                  <button class="btn btn-sm btn-danger" (click)="deleteMember(member.id)" [disabled]="anonymizingMemberId === member.id">
+                    {{ anonymizingMemberId === member.id ? 'Working...' : 'Confirm' }}
+                  </button>
+                  <button class="btn btn-sm btn-secondary" (click)="cancelDeleteMember()" [disabled]="anonymizingMemberId === member.id">Cancel</button>
+                </ng-template>
               </div>
             </td>
           </tr>
         </tbody>
       </table>
 
-      <div class="empty-state" *ngIf="!loading && members.length === 0">
-        <p>No members found. Add your first member to get started.</p>
+      <div class="empty-state" *ngIf="!loading && hasLoadedMembers && members.length === 0">
+        <p>{{ membersEmptyMessage }}</p>
       </div>
     </div>
 
     <!-- Member Detail + Contracts -->
-    <div class="detail-panel" *ngIf="selectedMember">
+    <div class="detail-panel" *ngIf="selectedMember as member">
       <div class="detail-header">
         <div>
           <div class="eyebrow">Profile</div>
-          <h3>{{ selectedMember.firstName }} {{ selectedMember.lastName }}</h3>
-          <p class="text-muted">{{ selectedMember.email }}</p>
+          <h3>{{ member.firstName }} {{ member.lastName }}</h3>
+          <p class="text-muted">{{ member.email }}</p>
         </div>
         <div>
-          <span class="badge" [ngClass]="getStatusBadgeClass(selectedMember.status)">{{ selectedMember.status }}</span>
+          <span class="badge" [ngClass]="getStatusBadgeClass(member.status)">{{ member.status }}</span>
         </div>
       </div>
 
       <div class="detail-grid">
         <div>
           <div class="detail-label">Phone</div>
-          <div class="detail-value">{{ selectedMember.mobilePhone || '—' }}</div>
+          <div class="detail-value">{{ member.mobilePhone || '—' }}</div>
         </div>
         <div>
           <div class="detail-label">Home club</div>
-          <div class="detail-value">{{ selectedMember.homeClub || '—' }}</div>
+          <div class="detail-value">{{ member.homeClub || '—' }}</div>
         </div>
         <div>
           <div class="detail-label">Plan</div>
-          <div class="detail-value">{{ selectedMember.currentPlan || '—' }}</div>
+          <div class="detail-value">{{ member.currentPlan || '—' }}</div>
         </div>
         <div>
           <div class="detail-label">Last visit</div>
-          <div class="detail-value">{{ selectedMember.lastVisitDate | date:'short' }}</div>
+          <div class="detail-value">{{ member.lastVisitDate | date:'short' }}</div>
         </div>
       </div>
 
       <div class="contracts">
         <div class="flex-between">
           <h4>Contracts</h4>
-          <span class="pill muted">{{ selectedMember.contracts.length }} active</span>
+          <span class="pill muted">{{ member.contracts.length }} active</span>
         </div>
-        <div class="contract-card" *ngFor="let contract of selectedMember.contracts">
+        <div class="success small" *ngIf="contractSuccess">{{ contractSuccess }}</div>
+        <div class="error small" *ngIf="contractError">{{ contractError }}</div>
+        <div class="contract-card" *ngFor="let contract of member.contracts">
           <div>
             <div class="contract-title">{{ contract.planName }}</div>
             <div class="text-muted">{{ contract.contractType }} · {{ contract.homeClub }}</div>
             <div class="text-muted">From {{ contract.startDate | date:'mediumDate' }} to {{ contract.endDate || 'Open' }}</div>
           </div>
           <div class="actions">
-            <button class="btn btn-sm" (click)="freezeContract(contract)">Freeze</button>
-            <button class="btn btn-sm" (click)="renewContract(contract)">Renew</button>
+            <input
+              class="freeze-input"
+              type="number"
+              min="1"
+              [ngModel]="freezeDurations[contract.id] ?? 30"
+              (ngModelChange)="setFreezeDuration(contract.id, $event)"
+              [ngModelOptions]="{ standalone: true }" />
+            <button class="btn btn-sm" (click)="freezeContract(contract)" [disabled]="isContractActionLoading(contract.id)">Freeze</button>
+            <button class="btn btn-sm" (click)="renewContract(contract)" [disabled]="isContractActionLoading(contract.id)">Renew</button>
           </div>
         </div>
-        <div *ngIf="!selectedMember.contracts.length" class="empty-state small">No contract yet.</div>
+        <div *ngIf="!member.contracts.length" class="empty-state small">No contract yet.</div>
       </div>
 
       <div class="form-card">
@@ -197,9 +227,17 @@
           <input type="date" [(ngModel)]="contractForm.endDate">
         </div>
         <div class="form-actions">
-          <button class="btn btn-success" (click)="createContract()">Create contract</button>
+          <button class="btn btn-success" (click)="createContract()" [disabled]="creatingContract || !plans.length || !clubs.length">
+            {{ creatingContract ? 'Creating...' : 'Create contract' }}
+          </button>
         </div>
       </div>
+    </div>
+
+    <div class="detail-panel" *ngIf="!selectedMember">
+      <div class="loading" *ngIf="detailLoading">Loading member detail...</div>
+      <div class="error" *ngIf="detailError">{{ detailError }}</div>
+      <div class="empty-state" *ngIf="!detailLoading && !detailError">Select a member to view contracts and profile data.</div>
     </div>
   </div>
 </div>

@@ -40,7 +40,7 @@ public class CreateMemberUseCase
             Email = request.Email,
             Gender = Enum.Parse<Gender>(request.Gender, true),
             DateOfBirth = request.DateOfBirth,
-            Nationality = request.Nationality,
+            Nationality = request.Nationality ?? "Belgian",
             MobilePhone = request.MobilePhone,
             AddressStreet = request.AddressStreet,
             AddressCity = request.AddressCity,

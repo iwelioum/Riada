@@ -26,14 +26,19 @@ public class AnalyticsService : IAnalyticsService
                 COUNT(DISTINCT a.member_id) AS VisitorCount,
                 CAST(COUNT(a.id) AS DECIMAL(10, 2)) / NULLIF(COUNT(DISTINCT a.member_id), 0) AS AverageVisitsPerMember
             FROM clubs c
-            LEFT JOIN accesses a ON a.club_id = c.id
-            WHERE a.access_date BETWEEN @DateFrom AND @DateTo
+            LEFT JOIN access_log a
+                ON a.club_id = c.id
+               AND a.access_status = 'granted'
+               AND a.accessed_at BETWEEN @DateFrom AND @DateTo
             GROUP BY c.id, c.name
             ORDER BY VisitorCount DESC";
 
+        var fromDateTime = dateFrom.ToDateTime(TimeOnly.MinValue);
+        var toDateTime = dateTo.ToDateTime(TimeOnly.MaxValue);
+
         var result = await connection.QueryAsync<(uint ClubId, string ClubName, int VisitorCount, decimal AverageVisitsPerMember)>(
             sql,
-            new { DateFrom = dateFrom, DateTo = dateTo });
+            new { DateFrom = fromDateTime, DateTo = toDateTime });
 
         return result.ToList().AsReadOnly();
     }
@@ -46,14 +51,19 @@ public class AnalyticsService : IAnalyticsService
 
         const string sql = @"
             SELECT 
-                po.id AS OptionId,
-                po.name AS OptionName,
-                COUNT(DISTINCT spo.subscription_plan_id) AS SubscriptionCount,
-                CAST(COUNT(DISTINCT spo.subscription_plan_id) AS DECIMAL(10, 2)) / 
-                    NULLIF((SELECT COUNT(*) FROM subscription_plans), 0) * 100 AS PopularityPercentage
-            FROM plan_options po
-            LEFT JOIN subscription_plan_options spo ON spo.plan_option_id = po.id
-            GROUP BY po.id, po.name
+                so.id AS OptionId,
+                so.option_name AS OptionName,
+                COUNT(DISTINCT co.contract_id) AS SubscriptionCount,
+                ROUND(
+                    COUNT(DISTINCT co.contract_id) * 100.0 /
+                    NULLIF((SELECT COUNT(*) FROM contracts WHERE status = 'active'), 0),
+                    2
+                ) AS PopularityPercentage
+            FROM contract_options co
+            JOIN service_options so ON so.id = co.option_id
+            JOIN contracts c ON c.id = co.contract_id
+            WHERE c.status = 'active' AND co.removed_on IS NULL
+            GROUP BY so.id, so.option_name
             ORDER BY SubscriptionCount DESC";
 
         var result = await connection.QueryAsync<(uint OptionId, string OptionName, int SubscriptionCount, decimal PopularityPercentage)>(sql);
@@ -70,14 +80,15 @@ public class AnalyticsService : IAnalyticsService
         const string sql = @"
             SELECT 
                 (SELECT COUNT(*) FROM members) AS TotalMembers,
-                (SELECT COUNT(*) FROM contracts WHERE end_date IS NULL OR end_date > CURDATE()) AS ActiveContracts,
-                (SELECT COUNT(*) FROM invoices WHERE status = 'Pending') AS PendingInvoices";
+                (SELECT COUNT(*) FROM members WHERE status = 'active') AS ActiveMembers,
+                (SELECT COUNT(*) FROM contracts WHERE status = 'active') AS ActiveContracts,
+                (SELECT COUNT(*) FROM invoices WHERE status IN ('issued', 'overdue', 'partially_paid')) AS PendingInvoices";
 
         using var reader = await connection.QueryMultipleAsync(sql);
-        var data = await reader.ReadSingleAsync<(int TotalMembers, int ActiveContracts, int PendingInvoices)>();
+        var data = await reader.ReadSingleAsync<(int TotalMembers, int ActiveMembers, int ActiveContracts, int PendingInvoices)>();
 
         // Simple health check logic
-        var isHealthy = data.TotalMembers > 0 && data.ActiveContracts > 0;
+        var isHealthy = data.ActiveMembers > 0 && data.ActiveContracts > 0;
         var status = isHealthy ? "Healthy" : "Unhealthy";
 
         return (isHealthy, status, data.TotalMembers, data.ActiveContracts, data.PendingInvoices);

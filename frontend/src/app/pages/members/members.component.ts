@@ -1,6 +1,9 @@
 import { Component, OnInit } from '@angular/core';
+import { HttpErrorResponse } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { ApiService } from '../../core/services/api.service';
 import {
   ClubSummary,
@@ -21,15 +24,31 @@ import {
 })
 export class MembersComponent implements OnInit {
   members: MemberSummary[] = [];
-  selectedMember?: MemberDetail;
+  selectedMember: MemberDetail | null = null;
   plans: SubscriptionPlan[] = [];
   clubs: ClubSummary[] = [];
   loading = false;
+  metaLoading = false;
+  formLoading = false;
   detailLoading = false;
   error: string | null = null;
+  metaError: string | null = null;
+  detailError: string | null = null;
+  actionError: string | null = null;
+  successMessage: string | null = null;
+  formError: string | null = null;
+  contractError: string | null = null;
+  contractSuccess: string | null = null;
+  savingMember = false;
+  creatingContract = false;
+  contractActionLoadingId: number | null = null;
+  anonymizeConfirmId: number | null = null;
+  anonymizingMemberId: number | null = null;
   showForm = false;
   editingId: number | null = null;
   filters = { status: '', search: '' };
+  freezeDurations: Record<number, number | undefined> = {};
+  hasLoadedMembers = false;
 
   formData: CreateMemberPayload = {
     firstName: '',
@@ -62,41 +81,95 @@ export class MembersComponent implements OnInit {
   }
 
   loadMeta() {
-    this.apiService.listSubscriptionPlans().subscribe({ next: (plans) => (this.plans = plans || []) });
-    this.apiService.listClubs().subscribe({ next: (clubs) => (this.clubs = clubs || []) });
+    this.metaLoading = true;
+    this.metaError = null;
+    const issues: string[] = [];
+
+    forkJoin({
+      plans: this.apiService.listSubscriptionPlans().pipe(
+        catchError((error) => {
+          issues.push(`Plans: ${this.getErrorMessage(error, 'Unable to load plans.')}`);
+          return of([] as SubscriptionPlan[]);
+        })
+      ),
+      clubs: this.apiService.listClubs().pipe(
+        catchError((error) => {
+          issues.push(`Clubs: ${this.getErrorMessage(error, 'Unable to load clubs.')}`);
+          return of([] as ClubSummary[]);
+        })
+      )
+    }).subscribe({
+      next: ({ plans, clubs }) => {
+        this.plans = plans;
+        this.clubs = clubs;
+        this.metaError = issues.length ? issues.join(' ') : null;
+      },
+      error: () => {
+        this.metaError = 'Unexpected metadata loading error.';
+      },
+      complete: () => {
+        this.metaLoading = false;
+      }
+    });
+  }
+
+  applyFilters() {
+    if (this.filters.search.trim().length === 1) {
+      this.error = 'Please enter at least 2 characters for search.';
+      return;
+    }
+
+    this.loadMembers();
   }
 
   loadMembers() {
+    this.hasLoadedMembers = false;
     this.loading = true;
     this.error = null;
-    this.apiService.getMembers({ page: 1, pageSize: 50, status: this.filters.status, search: this.filters.search }).subscribe({
+    this.apiService.getMembers({
+      page: 1,
+      pageSize: 50,
+      status: this.filters.status || undefined,
+      search: this.filters.search.trim() || undefined
+    }).subscribe({
       next: (data) => {
         this.members = data.items;
         this.loading = false;
+        this.hasLoadedMembers = true;
+        if (this.selectedMember && !this.members.find((member) => member.id === this.selectedMember?.id)) {
+          this.selectedMember = null;
+        }
       },
       error: (err) => {
-        console.error('Error loading members:', err);
-        this.error = 'Failed to load members. Please check if the API is running.';
+        this.members = [];
+        this.error = this.getErrorMessage(err, 'Failed to load members. Please check if the API is running.');
         this.loading = false;
+        this.hasLoadedMembers = true;
       }
     });
   }
 
   selectMember(member: MemberSummary) {
+    this.selectedMember = null;
     this.detailLoading = true;
+    this.detailError = null;
+    this.clearContractMessages();
     this.apiService.getMemberDetail(member.id).subscribe({
       next: (detail) => {
         this.selectedMember = detail;
+        this.freezeDurations = Object.fromEntries(detail.contracts.map((contract) => [contract.id, 30]));
         this.detailLoading = false;
       },
       error: (err) => {
-        console.error('Error loading member detail:', err);
+        this.selectedMember = null;
+        this.detailError = this.getErrorMessage(err, 'Failed to load member detail.');
         this.detailLoading = false;
       }
     });
   }
 
   openAddForm() {
+    this.clearActionMessages();
     this.showForm = true;
     this.editingId = null;
     this.resetForm();
@@ -105,91 +178,152 @@ export class MembersComponent implements OnInit {
   closeForm() {
     this.showForm = false;
     this.editingId = null;
+    this.formLoading = false;
+    this.formError = null;
     this.resetForm();
   }
 
   editMember(member: MemberSummary) {
+    this.clearActionMessages();
     this.editingId = member.id;
-    this.formData = {
-      ...this.formData,
-      firstName: member.firstName,
-      lastName: member.lastName,
-      email: member.email,
-      gender: this.formData.gender,
-      dateOfBirth: '',
-      mobilePhone: member.mobilePhone ?? '',
-      primaryGoal: member.primaryGoal ?? '',
-      marketingConsent: true
-    };
     this.showForm = true;
+    this.formLoading = true;
+    this.formError = null;
+
+    this.apiService.getMemberDetail(member.id).subscribe({
+      next: (detail) => {
+        this.populateFormFromMemberDetail(detail);
+        this.formLoading = false;
+      },
+      error: (error) => {
+        this.formData = {
+          ...this.formData,
+          firstName: member.firstName,
+          lastName: member.lastName,
+          email: member.email,
+          mobilePhone: member.mobilePhone ?? '',
+          primaryGoal: member.primaryGoal ?? ''
+        };
+        this.formError = this.getErrorMessage(error, 'Could not load full profile. You can still update basic fields.');
+        this.formLoading = false;
+      }
+    });
   }
 
   saveMember() {
-    if (!this.formData.firstName || !this.formData.lastName || !this.formData.email || !this.formData.gender || !this.formData.dateOfBirth) {
-      alert('Please fill in all required fields (first name, last name, email, gender, birth date)');
+    if (this.savingMember) {
       return;
     }
 
+    this.clearActionMessages();
+    this.formError = this.validateMemberForm();
+    if (this.formError) {
+      return;
+    }
+
+    this.savingMember = true;
+
     if (this.editingId) {
       const payload = {
-        firstName: this.formData.firstName,
-        lastName: this.formData.lastName,
+        firstName: this.formData.firstName.trim(),
+        lastName: this.formData.lastName.trim(),
         gender: this.formData.gender,
-        nationality: this.formData.nationality,
-        mobilePhone: this.formData.mobilePhone,
-        addressStreet: this.formData.addressStreet,
-        addressCity: this.formData.addressCity,
-        addressPostalCode: this.formData.addressPostalCode,
-        primaryGoal: this.formData.primaryGoal,
-        acquisitionSource: this.formData.acquisitionSource
+        nationality: this.formData.nationality?.trim(),
+        mobilePhone: this.formData.mobilePhone?.trim(),
+        addressStreet: this.formData.addressStreet?.trim(),
+        addressCity: this.formData.addressCity?.trim(),
+        addressPostalCode: this.formData.addressPostalCode?.trim(),
+        primaryGoal: this.formData.primaryGoal?.trim(),
+        acquisitionSource: this.formData.acquisitionSource?.trim()
       };
 
       this.apiService.updateMember(this.editingId, payload).subscribe({
         next: () => {
           this.loadMembers();
           this.closeForm();
-          alert('Member updated successfully');
+          this.successMessage = 'Member updated successfully.';
+          this.savingMember = false;
         },
         error: (err) => {
-          console.error('Error updating member:', err);
-          alert('Failed to update member');
+          this.formError = this.getErrorMessage(err, 'Failed to update member.');
+          this.savingMember = false;
         }
       });
     } else {
-      this.apiService.createMember(this.formData).subscribe({
+      this.apiService.createMember({
+        ...this.formData,
+        firstName: this.formData.firstName.trim(),
+        lastName: this.formData.lastName.trim(),
+        email: this.formData.email.trim(),
+        nationality: this.formData.nationality?.trim(),
+        mobilePhone: this.formData.mobilePhone?.trim(),
+        addressStreet: this.formData.addressStreet?.trim(),
+        addressCity: this.formData.addressCity?.trim(),
+        addressPostalCode: this.formData.addressPostalCode?.trim(),
+        primaryGoal: this.formData.primaryGoal?.trim(),
+        acquisitionSource: this.formData.acquisitionSource?.trim()
+      }).subscribe({
         next: () => {
           this.loadMembers();
           this.closeForm();
-          alert('Member created successfully');
+          this.successMessage = 'Member created successfully.';
+          this.savingMember = false;
         },
         error: (err) => {
-          console.error('Error creating member:', err);
-          alert('Failed to create member');
+          this.formError = this.getErrorMessage(err, 'Failed to create member.');
+          this.savingMember = false;
         }
       });
     }
+  }
+
+  requestDeleteMember(id: number) {
+    this.clearActionMessages();
+    this.anonymizeConfirmId = id;
+  }
+
+  cancelDeleteMember() {
+    this.anonymizeConfirmId = null;
   }
 
   deleteMember(id: number) {
-    if (confirm('Are you sure you want to delete this member?')) {
-      this.apiService.anonymizeMember(id, 'admin').subscribe({
-        next: () => {
-          this.loadMembers();
-          alert('Member anonymized successfully');
-        },
-        error: (err) => {
-          console.error('Error deleting member:', err);
-          alert('Failed to delete member');
+    this.clearActionMessages();
+    this.anonymizingMemberId = id;
+    this.apiService.anonymizeMember(id, 'admin').subscribe({
+      next: () => {
+        this.loadMembers();
+        if (this.selectedMember?.id === id) {
+          this.selectedMember = null;
         }
-      });
-    }
+        this.successMessage = 'Member anonymized successfully.';
+      },
+      error: (err) => {
+        this.actionError = this.getErrorMessage(err, 'Failed to anonymize member.');
+      },
+      complete: () => {
+        this.anonymizingMemberId = null;
+        this.anonymizeConfirmId = null;
+      }
+    });
   }
 
   createContract() {
-    if (!this.selectedMember || !this.contractForm.planId || !this.contractForm.homeClubId || !this.contractForm.contractType || !this.contractForm.startDate) {
-      alert('Fill contract fields (plan, club, type, start date).');
+    if (this.creatingContract) {
       return;
     }
+
+    this.clearContractMessages();
+    if (!this.selectedMember || !this.contractForm.planId || !this.contractForm.homeClubId || !this.contractForm.contractType || !this.contractForm.startDate) {
+      this.contractError = 'Fill contract fields (plan, club, type, start date).';
+      return;
+    }
+
+    if (this.contractForm.endDate && this.contractForm.endDate < this.contractForm.startDate) {
+      this.contractError = 'Contract end date must be after the start date.';
+      return;
+    }
+
+    this.creatingContract = true;
     const payload: CreateContractPayload = {
       memberId: this.selectedMember.id,
       planId: Number(this.contractForm.planId),
@@ -201,40 +335,69 @@ export class MembersComponent implements OnInit {
 
     this.apiService.createContract(payload).subscribe({
       next: (res) => {
-        alert(res.message);
+        this.contractSuccess = res.message;
         this.reloadSelected();
+        this.creatingContract = false;
       },
       error: (err) => {
-        console.error('Error creating contract:', err);
-        alert('Failed to create contract');
+        this.contractError = this.getErrorMessage(err, 'Failed to create contract.');
+        this.creatingContract = false;
       }
     });
   }
 
+  setFreezeDuration(contractId: number, value: number | string): void {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      this.freezeDurations[contractId] = Math.floor(parsed);
+      return;
+    }
+
+    delete this.freezeDurations[contractId];
+  }
+
   freezeContract(contract: ContractSummary) {
-    const duration = prompt('Freeze duration in days', '30');
-    if (!duration) return;
-    this.apiService.freezeContract(contract.id, Number(duration)).subscribe({
+    if (this.contractActionLoadingId !== null) {
+      return;
+    }
+
+    this.clearContractMessages();
+    const duration = this.freezeDurations[contract.id] ?? 30;
+    if (!Number.isFinite(duration) || duration < 1) {
+      this.contractError = 'Freeze duration must be at least 1 day.';
+      return;
+    }
+
+    this.contractActionLoadingId = contract.id;
+    this.apiService.freezeContract(contract.id, duration).subscribe({
       next: (res) => {
-        alert(res.message);
+        this.contractSuccess = res.message;
         this.reloadSelected();
+        this.contractActionLoadingId = null;
       },
       error: (err) => {
-        console.error('Error freezing contract:', err);
-        alert('Failed to freeze contract');
+        this.contractError = this.getErrorMessage(err, 'Failed to freeze contract.');
+        this.contractActionLoadingId = null;
       }
     });
   }
 
   renewContract(contract: ContractSummary) {
+    if (this.contractActionLoadingId !== null) {
+      return;
+    }
+
+    this.clearContractMessages();
+    this.contractActionLoadingId = contract.id;
     this.apiService.renewContract(contract.id).subscribe({
       next: (res) => {
-        alert(res.message);
+        this.contractSuccess = res.message;
         this.reloadSelected();
+        this.contractActionLoadingId = null;
       },
       error: (err) => {
-        console.error('Error renewing contract:', err);
-        alert('Failed to renew contract');
+        this.contractError = this.getErrorMessage(err, 'Failed to renew contract.');
+        this.contractActionLoadingId = null;
       }
     });
   }
@@ -244,6 +407,41 @@ export class MembersComponent implements OnInit {
       this.selectMember(this.selectedMember);
       this.loadMembers();
     }
+  }
+
+  private validateMemberForm(): string | null {
+    if (!this.formData.firstName.trim()) return 'First name is required.';
+    if (!this.formData.lastName.trim()) return 'Last name is required.';
+    if (!this.formData.email.trim()) return 'Email is required.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.formData.email)) return 'Email format is invalid.';
+    if (!this.formData.gender) return 'Gender is required.';
+    if (!this.formData.dateOfBirth) return 'Date of birth is required.';
+    return null;
+  }
+
+  private populateFormFromMemberDetail(detail: MemberDetail): void {
+    this.formData = {
+      ...this.formData,
+      firstName: detail.firstName,
+      lastName: detail.lastName,
+      email: detail.email,
+      gender: detail.gender || 'Unspecified',
+      dateOfBirth: detail.dateOfBirth ? String(detail.dateOfBirth).slice(0, 10) : '',
+      mobilePhone: detail.mobilePhone ?? '',
+      nationality: detail.nationality ?? '',
+      primaryGoal: detail.primaryGoal ?? '',
+      marketingConsent: detail.marketingConsent
+    };
+  }
+
+  private clearActionMessages(): void {
+    this.actionError = null;
+    this.successMessage = null;
+  }
+
+  private clearContractMessages(): void {
+    this.contractError = null;
+    this.contractSuccess = null;
   }
 
   resetForm() {
@@ -270,17 +468,49 @@ export class MembersComponent implements OnInit {
     };
   }
 
+  isContractActionLoading(contractId: number): boolean {
+    return this.contractActionLoadingId === contractId;
+  }
+
+  get membersEmptyMessage(): string {
+    if (this.filters.search.trim() || this.filters.status) {
+      return 'No members match the current filters.';
+    }
+
+    return 'No members found. Add your first member to get started.';
+  }
+
   getStatusBadgeClass(status: string): string {
     switch (status) {
       case 'Active':
         return 'badge-success';
       case 'Suspended':
       case 'Inactive':
+      case 'Pending':
         return 'badge-warning';
       case 'Anonymized':
         return 'badge-danger';
       default:
         return 'badge-info';
     }
+  }
+
+  private getErrorMessage(error: unknown, fallback: string): string {
+    if (error instanceof HttpErrorResponse) {
+      if (error.status === 401) {
+        return 'Session expired. Sign in again before retrying this action.';
+      }
+
+      if (error.status === 403) {
+        return 'Your role is not allowed to perform this action.';
+      }
+
+      const backendMessage = error.error?.message ?? error.error?.Message;
+      if (typeof backendMessage === 'string' && backendMessage.trim().length > 0) {
+        return backendMessage;
+      }
+    }
+
+    return fallback;
   }
 }

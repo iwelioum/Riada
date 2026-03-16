@@ -26,7 +26,19 @@ public class DistributedCacheService : ICacheService
     public async Task<T?> GetAsync<T>(string key, CancellationToken ct = default) where T : class
     {
         var cachedData = await _cache.GetStringAsync(key, ct);
-        return cachedData == null ? null : JsonSerializer.Deserialize<T>(cachedData, _options);
+        if (cachedData == null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<T>(cachedData, _options);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     public async Task SetAsync<T>(string key, T value, TimeSpan? expiration = null, CancellationToken ct = default) where T : class

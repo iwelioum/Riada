@@ -37,7 +37,7 @@ public class RecordPaymentUseCaseTests
 
         // Assert
         result.Should().NotBeNull();
-        result!.AmountInclTax.Should().Be(150.00m);
+        result!.AmountInclTax.Should().Be(amount);
         result.Status.Should().Be(InvoiceStatus.Issued);
     }
 

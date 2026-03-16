@@ -8,7 +8,9 @@ obj/
 
 ## IDE
 .vs/
-.vscode/
+!.vscode/
+.vscode/*
+!.vscode/mcp.json
 .idea/
 *.swp
 

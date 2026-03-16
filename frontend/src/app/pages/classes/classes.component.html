@@ -3,17 +3,42 @@
     <div>
       <div class="eyebrow">Training</div>
       <h1>Classes</h1>
-      <p class="text-muted">Planifie et réserve des sessions pour tes membres.</p>
+      <p class="text-muted">Plan and book member sessions with API-backed availability data.</p>
     </div>
     <div class="filters">
-      <select [(ngModel)]="clubId" (change)="loadSessions()">
-        <option *ngFor="let club of clubs" [value]="club.id">{{ club.name }}</option>
+      <select [(ngModel)]="clubId" (change)="loadSessions()" [disabled]="loading || clubsLoading || !clubs.length">
+        <option [ngValue]="null">Select club</option>
+        <option *ngFor="let club of clubs" [ngValue]="club.id">{{ club.name }}</option>
       </select>
-      <button class="pill solid" (click)="loadSessions()">Rafraîchir</button>
+      <select [(ngModel)]="days" [disabled]="loading">
+        <option [ngValue]="7">7 days</option>
+        <option [ngValue]="14">14 days</option>
+        <option [ngValue]="30">30 days</option>
+        <option [ngValue]="60">60 days</option>
+      </select>
+      <button class="pill solid" (click)="loadSessions()" [disabled]="loading || clubsLoading">Refresh</button>
     </div>
   </div>
 
-  <div class="loading" *ngIf="loading">Chargement des sessions...</div>
+  <div class="loading" *ngIf="clubsLoading">Loading clubs...</div>
+  <div class="empty" *ngIf="clubsError">{{ clubsError }}</div>
+  <div class="empty" *ngIf="pageError">{{ pageError }}</div>
+  <div class="error" *ngIf="bookingError">{{ bookingError }}</div>
+  <div class="success" *ngIf="bookingSuccess">{{ bookingSuccess }}</div>
+
+  <div class="loading" *ngIf="loading">Loading sessions...</div>
+
+  <div class="card session-card" *ngIf="selectedBookingSession as selectedSession">
+    <div class="session-title">Booking: {{ selectedSession.courseName }}</div>
+    <div class="text-muted">{{ selectedSession.startsAt | date:'medium' }} · {{ selectedSession.clubName }}</div>
+    <div class="session-footer">
+      <input type="number" min="1" [(ngModel)]="bookingMemberId" placeholder="Member ID" />
+      <button class="pill solid" (click)="submitBooking()" [disabled]="bookingInProgress">
+        {{ bookingInProgress ? 'Booking...' : 'Confirm booking' }}
+      </button>
+      <button class="pill ghost" (click)="cancelBookingForm()" [disabled]="bookingInProgress">Cancel</button>
+    </div>
+  </div>
 
   <div class="grid-2" *ngIf="!loading && sessions.length">
     <div class="card session-card" *ngFor="let session of sessions">
@@ -35,13 +60,16 @@
       </div>
 
       <div class="session-footer">
-        <button class="pill solid" (click)="bookSession(session.id)">Réserver</button>
-        <span class="text-muted">Occupancy {{ session.occupancyPercent }}%</span>
+        <button class="pill solid" (click)="openBookingForm(session.id)" [disabled]="bookingInProgress || !canBook(session)">
+          {{ isBooking(session.id) ? 'Selected for booking' : (canBook(session) ? 'Book member' : 'Full') }}
+        </button>
+        <a class="pill ghost details-link" [routerLink]="['/classes', session.id]">Details</a>
+        <span class="text-muted">{{ session.occupancyPercent }}% occupied</span>
       </div>
     </div>
   </div>
 
-  <div class="empty" *ngIf="!loading && !sessions.length">
-    Aucune classe planifiée.
+  <div class="empty" *ngIf="!loading && hasLoadedSessions && !sessions.length && !pageError">
+    {{ clubId ? 'No classes are scheduled for the selected period.' : 'Select a club to load classes.' }}
   </div>
 </div>

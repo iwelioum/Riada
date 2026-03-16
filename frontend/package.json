@@ -8,7 +8,7 @@
     "build": "npm run ng -- build",
     "watch": "npm run ng -- build --watch --configuration development",
     "serve:dist": "node -e \"const { createServer } = require('http-server'); const net = require('net'); const path = require('path'); const root = path.join(__dirname,'dist','riada-frontend','browser'); const host='localhost'; const start=Number(process.env.PORT)||4200; const tryPort=(p)=>new Promise((res)=>{const s=net.createServer(); s.once('error',()=>res(null)); s.once('listening',()=>s.close(()=>res(p))); s.listen(p,host);}); (async()=>{let port=start; while(!(await tryPort(port))){ port++; if(port>start+10) throw new Error('No free port found'); } createServer({ root, cache:-1, cors:true }).listen(port,host,()=>console.log(`Serving dist on http://${host}:${port}`)); })().catch((err)=>{ console.error(err); process.exit(1); });\"",
-    "test": "npm run ng -- test"
+    "test": "node ./scripts/run-karma.js"
   },
   "private": true,
   "dependencies": {

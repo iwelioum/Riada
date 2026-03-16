@@ -49,12 +49,12 @@ public static class DependencyInjection
         services.AddScoped<IMaintenanceTicketRepository, MaintenanceTicketRepository>();
         services.AddScoped<IBookingRepository, BookingRepository>();
 
-        // Stored Procedure services (Dapper — use raw connection string)
-        services.AddScoped<IAccessCheckService>(_ => new AccessCheckService(connectionString));
-        services.AddScoped<IBillingService>(_ => new BillingService(connectionString));
-        services.AddScoped<IContractLifecycleService>(_ => new ContractLifecycleService(connectionString));
-        services.AddScoped<IGdprService>(_ => new GdprService(connectionString));
-        services.AddScoped<IAnalyticsService>(_ => new AnalyticsService(connectionString));
+        // Stored Procedure services (Dapper — stateless, thread-safe, use singleton)
+        services.AddSingleton<IAccessCheckService>(_ => new AccessCheckService(connectionString));
+        services.AddSingleton<IBillingService>(_ => new BillingService(connectionString));
+        services.AddSingleton<IContractLifecycleService>(_ => new ContractLifecycleService(connectionString));
+        services.AddSingleton<IGdprService>(_ => new GdprService(connectionString));
+        services.AddSingleton<IAnalyticsService>(_ => new AnalyticsService(connectionString));
 
         // Services
         services.AddSingleton<IDateTimeProvider, DateTimeProvider>();

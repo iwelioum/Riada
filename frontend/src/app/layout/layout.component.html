@@ -9,17 +9,20 @@
     </div>
 
     <nav class="nav-menu">
-      <a
-        *ngFor="let item of navItems"
-        [routerLink]="item.path"
-        [routerLinkActive]="'active'"
-        [routerLinkActiveOptions]="{ exact: !!item.exact }"
-        class="nav-link"
-      >
-        <span class="icon">{{ item.icon }}</span>
-        <span class="label">{{ item.label }}</span>
-        <span *ngIf="item.badge" class="badge">{{ item.badge }}</span>
-      </a>
+      <section class="nav-group" *ngFor="let group of navGroups">
+        <div class="group-title">{{ group.title }}</div>
+        <a
+          *ngFor="let item of group.items"
+          [routerLink]="item.path"
+          [routerLinkActive]="'active'"
+          [routerLinkActiveOptions]="{ exact: !!item.exact }"
+          class="nav-link"
+        >
+          <span class="icon">{{ item.icon }}</span>
+          <span class="label">{{ item.label }}</span>
+          <span *ngIf="item.badge" class="badge">{{ item.badge }}</span>
+        </a>
+      </section>
     </nav>
 
     <div class="sidebar-card">

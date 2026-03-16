@@ -3,20 +3,122 @@
     <div>
       <div class="eyebrow">Nutrition</div>
       <h1>Meal Plan</h1>
-      <p class="text-muted">Prépare tes repas de la semaine.</p>
+      <p class="text-muted">Structure hebdo adaptée à l'objectif nutritionnel et à la progression sportive.</p>
     </div>
-    <button class="pill solid" routerLink="/meal-plan/summary">Voir détails</button>
+    <div class="header-actions">
+      <button class="pill ghost" (click)="loadLocalPlan()">Refresh local</button>
+      <button class="pill ghost" [routerLink]="['/meal-plan', firstVisibleDayId]">View details</button>
+      <button class="pill solid" (click)="syncWithBackend()" [disabled]="!canSyncBackend">Sync backend</button>
+    </div>
   </div>
 
-  <div class="grid-2">
-    <div class="card day" *ngFor="let day of plan">
-      <div class="flex-between">
-        <div class="day-title">{{ day.day }}</div>
-        <div class="pill muted">{{ day.calories }} cal</div>
-      </div>
-      <ul>
-        <li *ngFor="let meal of day.meals">{{ meal }}</li>
-      </ul>
+  <div class="grid-3 stats" *ngIf="state !== 'loading'">
+    <div class="card stat">
+      <div class="label">Goal</div>
+      <div class="value">{{ selectedGoal }}</div>
     </div>
+    <div class="card stat">
+      <div class="label">Prepared days</div>
+      <div class="value">{{ preparedCount }}/{{ visibleDayCards.length }}</div>
+    </div>
+    <div class="card stat">
+      <div class="label">Visible calories</div>
+      <div class="value">{{ weeklyCalories }}</div>
+      <div class="text-muted">Hydration tracked daily</div>
+    </div>
+  </div>
+
+  <div class="card controls">
+    <label class="control">
+      <span>Goal</span>
+      <select [(ngModel)]="selectedGoal" (ngModelChange)="onGoalChange()">
+        <option *ngFor="let goal of goals" [ngValue]="goal">{{ goal }}</option>
+      </select>
+    </label>
+
+    <label class="control">
+      <span>Search</span>
+      <input
+        type="search"
+        [(ngModel)]="searchTerm"
+        (ngModelChange)="applyFilters()"
+        placeholder="Day, meal name, slot"
+      />
+    </label>
+
+    <label class="toggle-control">
+      <input type="checkbox" [(ngModel)]="preparedOnly" (ngModelChange)="applyFilters()" />
+      <span>Show only prepared days</span>
+    </label>
+
+    <div class="control control-actions">
+      <button class="pill ghost" (click)="clearFilters()" [disabled]="!hasActiveFilters">Reset filters</button>
+    </div>
+  </div>
+
+  <div class="source-meta text-muted" *ngIf="lastUpdated">
+    Source: {{ source }} · Updated {{ lastUpdated | date:'shortTime' }}
+  </div>
+
+  <div class="state-card error" *ngIf="state === 'error'">
+    <h3>Unable to load meal planning data</h3>
+    <p>{{ errorMessage }}</p>
+    <div class="state-actions">
+      <button class="pill ghost" (click)="syncWithBackend()" [disabled]="!canSyncBackend">Retry backend sync</button>
+      <button class="pill solid" (click)="useLocalFallback()">Use local template</button>
+    </div>
+  </div>
+
+  <div class="grid-2" *ngIf="state === 'loading'">
+    <div class="card day skeleton" *ngFor="let _ of skeletonCards">
+      <div class="line w-65"></div>
+      <div class="line w-45"></div>
+      <div class="line w-80"></div>
+      <div class="line w-55"></div>
+    </div>
+  </div>
+
+  <div class="state-card" *ngIf="state === 'empty'">
+    <h3>{{ emptyReason === 'filters' ? 'No plan day matches current filters' : 'No meal plan data available' }}</h3>
+    <p class="text-muted">
+      {{
+        emptyReason === 'filters'
+          ? 'Clear filters to recover the full weekly structure.'
+          : 'Retry backend sync or reload local templates to keep nutrition planning on track.'
+      }}
+    </p>
+    <div class="state-actions">
+      <button class="pill ghost" *ngIf="emptyReason === 'filters'" (click)="clearFilters()">Clear filters</button>
+      <button class="pill ghost" *ngIf="emptyReason === 'no-data'" (click)="syncWithBackend()" [disabled]="!canSyncBackend">Retry backend sync</button>
+      <button class="pill solid" *ngIf="emptyReason === 'no-data'" (click)="useLocalFallback()">Load local template</button>
+    </div>
+  </div>
+
+  <div class="grid-2" *ngIf="state === 'ready'">
+    <article class="card day" *ngFor="let day of visibleDayCards">
+      <div class="flex-between">
+        <div class="day-title">{{ day.dayLabel }}</div>
+        <span class="prep-status" [ngClass]="day.prepClass">{{ day.prepStatus }}</span>
+      </div>
+
+      <div class="day-macros text-muted">
+        <span>{{ day.calories }} cal</span>
+        <span>P {{ day.protein }}g</span>
+        <span>C {{ day.carbs }}g</span>
+        <span>F {{ day.fats }}g</span>
+      </div>
+
+      <ul>
+        <li *ngFor="let meal of day.meals">{{ meal.slot }} · {{ meal.name }}</li>
+      </ul>
+      <div class="hydration text-muted">Hydration target {{ day.hydrationLiters }}L</div>
+
+      <div class="day-actions">
+        <button class="pill" [ngClass]="day.prepActionTone" (click)="togglePrepared(day.id)">
+          {{ day.prepActionLabel }}
+        </button>
+        <a class="pill ghost link-pill" [routerLink]="['/meal-plan', day.id]">Open details</a>
+      </div>
+    </article>
   </div>
 </div>

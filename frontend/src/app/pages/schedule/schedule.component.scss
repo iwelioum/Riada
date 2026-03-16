@@ -9,12 +9,21 @@
   gap: 0.5rem;
   align-items: center;
 
-  select {
+  select,
+  input {
     padding: 0.5rem 0.75rem;
     border-radius: 10px;
     border: 1px solid var(--border);
     background: #fff;
   }
+}
+
+.error {
+  color: #991b1b;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 8px 10px;
 }
 
 .day-grid {
@@ -46,4 +55,10 @@
 
 .session-name {
   font-weight: 700;
+}
+
+.session-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
 }

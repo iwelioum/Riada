@@ -20,6 +20,9 @@ public class MemberRepository : GenericRepository<Member>, IMemberRepository
             .Include(m => m.Contracts)
                 .ThenInclude(c => c.HomeClub)
             .Include(m => m.Contracts)
+                .ThenInclude(c => c.ContractOptions)
+                    .ThenInclude(co => co.Option)
+            .Include(m => m.Contracts)
                 .ThenInclude(c => c.Invoices)
             .FirstOrDefaultAsync(m => m.Id == id, ct);
 

@@ -6,92 +6,132 @@
       <p class="text-muted">Suivez l’activité clubs, les membres et les classes à venir.</p>
     </div>
     <div class="header-actions">
-      <select [(ngModel)]="clubId" (change)="loadMetrics()">
-        <option *ngFor="let club of clubs" [value]="club.id">{{ club.name }}</option>
+      <select [(ngModel)]="clubId" (change)="loadMetrics()" [disabled]="loading || clubsLoading || !clubs.length">
+        <option [ngValue]="null">Select club</option>
+        <option *ngFor="let club of clubs" [ngValue]="club.id">{{ club.name }}</option>
       </select>
-      <button class="pill ghost" (click)="loadMetrics()">Rafraîchir</button>
-      <button class="pill solid">Ajouter une action</button>
+      <button class="pill ghost" (click)="refresh()" [disabled]="loading || clubsLoading">Refresh</button>
     </div>
   </div>
 
-  <div class="stats grid-3">
-    <div class="card stat">
-      <div class="stat-label">Membres</div>
-      <div class="stat-value">{{ stats.members }}</div>
-      <div class="stat-sub text-muted">Total base active</div>
-    </div>
-    <div class="card stat">
-      <div class="stat-label">Sessions prévues</div>
-      <div class="stat-value">{{ stats.sessions }}</div>
-      <div class="stat-sub text-muted">Sur les 14 prochains jours</div>
-    </div>
-    <div class="card stat">
-      <div class="stat-label">Revenu estimé</div>
-      <div class="stat-value">{{ stats.revenue | currency:'USD':'symbol':'1.0-0' }}</div>
-      <div class="stat-sub text-muted">Factures + paiements saisis</div>
-    </div>
-    <div class="card stat">
-      <div class="stat-label">Risques détectés</div>
-      <div class="stat-value">{{ stats.risks }}</div>
-      <div class="stat-sub text-muted">Scores de churn à surveiller</div>
-    </div>
+  <div class="status info" *ngIf="clubsLoading">Refreshing clubs and metrics...</div>
+  <div class="status warn" *ngIf="clubsErrorMessage">{{ clubsErrorMessage }}</div>
+  <div class="status info" *ngIf="infoMessage">{{ infoMessage }}</div>
+  <div class="status error" *ngIf="errorMessage">{{ errorMessage }}</div>
+  <div class="status warn" *ngIf="!errorMessage && partialErrors.length">
+    <div>Some widgets could not be refreshed:</div>
+    <ul>
+      <li *ngFor="let issue of partialErrors">{{ issue }}</li>
+    </ul>
   </div>
 
-  <div class="grid-2">
-    <div class="card">
-      <div class="flex-between">
-        <div>
-          <h3>Sessions à venir</h3>
-          <p class="text-muted">Priorisez les créneaux qui se remplissent vite.</p>
-        </div>
-        <span class="pill muted">{{ upcomingSessions.length }} sessions</span>
+  <div class="text-muted" *ngIf="lastUpdated">Last refresh: {{ lastUpdated | date:'short' }}</div>
+  <div class="loading-state" *ngIf="loading">Loading dashboard data...</div>
+
+  <ng-container *ngIf="!loading">
+    <div class="stats grid-3">
+      <div class="card stat">
+        <div class="stat-label">Membres</div>
+        <div class="stat-value">{{ stats.members }}</div>
+        <div class="stat-sub text-muted">Total base active</div>
       </div>
+      <div class="card stat">
+        <div class="stat-label">Sessions prévues</div>
+        <div class="stat-value">{{ stats.sessions }}</div>
+        <div class="stat-sub text-muted">Sur les 14 prochains jours</div>
+      </div>
+      <div class="card stat">
+        <div class="stat-label">Risques détectés</div>
+        <div class="stat-value">{{ stats.risks }}</div>
+        <div class="stat-sub text-muted">Scores de churn à surveiller</div>
+      </div>
+      <div class="card stat">
+        <div class="stat-label">Clubs disponibles</div>
+        <div class="stat-value">{{ stats.clubs }}</div>
+        <div class="stat-sub text-muted">Référence active pour les vues planning</div>
+      </div>
+    </div>
 
-      <div class="session-list" *ngIf="firstSessions().length; else noSessions">
-        <div class="session" *ngFor="let session of firstSessions()">
+    <div class="grid-2">
+      <div class="card">
+        <div class="flex-between">
           <div>
-            <div class="session-name">{{ session.courseName }}</div>
-            <div class="text-muted">{{ session.instructorName }} · {{ session.clubName }}</div>
+            <h3>Sessions à venir</h3>
+            <p class="text-muted">Priorisez les créneaux qui se remplissent vite.</p>
           </div>
-          <div class="pill muted">{{ session.startsAt | date:'medium' }}</div>
+          <span class="pill muted">{{ upcomingSessions.length }} sessions</span>
         </div>
+
+        <div class="session-list" *ngIf="firstSessions().length; else noSessions">
+          <div class="session" *ngFor="let session of firstSessions()">
+            <div>
+              <div class="session-name">{{ session.courseName }}</div>
+              <div class="text-muted">{{ session.instructorName }} · {{ session.clubName }}</div>
+            </div>
+            <div class="pill muted">{{ session.startsAt | date:'medium' }}</div>
+          </div>
+        </div>
+        <ng-template #noSessions>
+          <div class="empty">Aucune session disponible pour l’instant.</div>
+        </ng-template>
       </div>
-      <ng-template #noSessions>
-        <div class="empty">Aucune session disponible pour l’instant.</div>
-      </ng-template>
+
+      <div class="card">
+        <div class="flex-between">
+          <div>
+            <h3>Alertes risque</h3>
+            <p class="text-muted">Members à contacter en priorité.</p>
+          </div>
+          <span class="pill muted">{{ riskAlerts.length }} alertes</span>
+        </div>
+
+        <div class="risk-list" *ngIf="riskAlerts.length; else noRisk">
+          <div class="risk" *ngFor="let alert of riskAlerts">
+            <div>
+              <div class="risk-name">{{ alert.memberName || 'Member' }}</div>
+              <div class="text-muted">Score: {{ alert.score }}</div>
+            </div>
+            <span class="pill warn">High</span>
+          </div>
+        </div>
+        <ng-template #noRisk>
+          <div class="empty">Pas d’alertes ouvertes.</div>
+        </ng-template>
+      </div>
     </div>
 
-    <div class="card">
+    <div class="card quick-actions">
       <div class="flex-between">
-        <div>
-          <h3>Alertes risque</h3>
-          <p class="text-muted">Members à contacter en priorité.</p>
-        </div>
-        <span class="pill muted">{{ riskAlerts.length }} alertes</span>
+        <h3>Actions rapides</h3>
+        <span class="text-muted">Pour gagner du temps côté réception</span>
       </div>
-
-      <div class="risk-list" *ngIf="riskAlerts.length; else noRisk">
-        <div class="risk" *ngFor="let alert of riskAlerts">
-          <div>
-            <div class="risk-name">{{ alert.memberName || 'Member' }}</div>
-            <div class="text-muted">Score: {{ alert.score }}</div>
-          </div>
-          <span class="pill warn">High</span>
-        </div>
+      <div class="actions">
+        <button *ngFor="let action of quickActions" class="action-btn" (click)="runQuickAction(action)">
+          <span class="icon">{{ action.icon }}</span>
+          {{ action.label }}
+        </button>
       </div>
-      <ng-template #noRisk>
-        <div class="empty">Pas d’alertes ouvertes.</div>
-      </ng-template>
+      <p class="text-muted helper-text">Chaque action précise la page à ouvrir pour terminer l’opération.</p>
+    </div>
+  </ng-container>
+  <div class="card" *ngIf="showEmptyState">
+    <div class="empty">No activity data is available yet for this dashboard.</div>
+  </div>
+  <div class="card" *ngIf="!loading && !clubs.length">
+    <div class="empty">
+      Aucun club disponible. Vérifiez les droits d'accès (401/403) ou l'état de l'API.
+      <div style="margin-top: 0.5rem;">
+        <button class="pill ghost" (click)="loadClubsAndMetrics()" [disabled]="loading || clubsLoading">Retry</button>
+      </div>
     </div>
   </div>
-
-  <div class="card quick-actions">
+  <div class="card quick-actions" *ngIf="loading">
     <div class="flex-between">
       <h3>Actions rapides</h3>
-      <span class="text-muted">Pour gagner du temps côté réception</span>
+      <span class="text-muted">Chargement des données...</span>
     </div>
     <div class="actions">
-      <button *ngFor="let action of quickActions" class="action-btn">
+      <button *ngFor="let action of quickActions" class="action-btn" disabled>
         <span class="icon">{{ action.icon }}</span>
         {{ action.label }}
       </button>

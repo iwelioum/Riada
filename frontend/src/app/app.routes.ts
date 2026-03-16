@@ -1,40 +1,93 @@
 import { Routes } from '@angular/router';
-import { DashboardComponent } from './pages/dashboard/dashboard.component';
-import { ClassesComponent } from './pages/classes/classes.component';
-import { MessagesComponent } from './pages/messages/messages.component';
-import { StatisticsComponent } from './pages/statistics/statistics.component';
-import { ExercisesComponent } from './pages/exercises/exercises.component';
-import { ScheduleComponent } from './pages/schedule/schedule.component';
-import { ClassDetailsComponent } from './pages/class-details/class-details.component';
-import { TrainersComponent } from './pages/trainers/trainers.component';
-import { MealPlanComponent } from './pages/meal-plan/meal-plan.component';
-import { MealDetailsComponent } from './pages/meal-details/meal-details.component';
-import { WorkoutTrackerComponent } from './pages/workout-tracker/workout-tracker.component';
-import { MembersComponent } from './pages/members/members.component';
-import { BillingComponent } from './pages/billing/billing.component';
-import { EquipmentComponent } from './pages/equipment/equipment.component';
-import { AccessControlComponent } from './pages/access-control/access-control.component';
-import { SubscriptionsComponent } from './pages/subscriptions/subscriptions.component';
-import { GuestsComponent } from './pages/guests/guests.component';
 
 export const routes: Routes = [
   { path: '', redirectTo: '/dashboard', pathMatch: 'full' },
-  { path: 'dashboard', component: DashboardComponent },
-  { path: 'members', component: MembersComponent },
-  { path: 'statistics', component: StatisticsComponent },
-  { path: 'exercises', component: ExercisesComponent },
-  { path: 'schedule', component: ScheduleComponent },
-  { path: 'classes', component: ClassesComponent },
-  { path: 'classes/:id', component: ClassDetailsComponent },
-  { path: 'trainers', component: TrainersComponent },
-  { path: 'messages', component: MessagesComponent },
-  { path: 'billing', component: BillingComponent },
-  { path: 'equipment', component: EquipmentComponent },
-  { path: 'access', component: AccessControlComponent },
-  { path: 'subscriptions', component: SubscriptionsComponent },
-  { path: 'guests', component: GuestsComponent },
-  { path: 'workout-tracker', component: WorkoutTrackerComponent },
-  { path: 'meal-plan', component: MealPlanComponent },
-  { path: 'meal-plan/:id', component: MealDetailsComponent },
+  {
+    path: 'dashboard',
+    loadComponent: () => import('./pages/dashboard/dashboard.component').then((m) => m.DashboardComponent)
+  },
+  {
+    path: 'members',
+    loadComponent: () => import('./pages/members/members.component').then((m) => m.MembersComponent)
+  },
+  {
+    path: 'statistics',
+    loadComponent: () => import('./pages/statistics/statistics.component').then((m) => m.StatisticsComponent)
+  },
+  {
+    path: 'reports',
+    loadComponent: () => import('./pages/reports/reports.component').then((m) => m.ReportsComponent)
+  },
+  {
+    path: 'exercises',
+    loadComponent: () => import('./pages/exercises/exercises.component').then((m) => m.ExercisesComponent)
+  },
+  {
+    path: 'schedule',
+    loadComponent: () => import('./pages/schedule/schedule.component').then((m) => m.ScheduleComponent)
+  },
+  {
+    path: 'classes',
+    loadComponent: () => import('./pages/classes/classes.component').then((m) => m.ClassesComponent)
+  },
+  {
+    path: 'classes/:id',
+    loadComponent: () => import('./pages/class-details/class-details.component').then((m) => m.ClassDetailsComponent)
+  },
+  {
+    path: 'trainers',
+    loadComponent: () => import('./pages/trainers/trainers.component').then((m) => m.TrainersComponent)
+  },
+  {
+    path: 'messages',
+    loadComponent: () => import('./pages/messages/messages.component').then((m) => m.MessagesComponent)
+  },
+  {
+    path: 'billing',
+    loadComponent: () => import('./pages/billing/billing.component').then((m) => m.BillingComponent)
+  },
+  {
+    path: 'equipment',
+    loadComponent: () => import('./pages/equipment/equipment.component').then((m) => m.EquipmentComponent)
+  },
+  {
+    path: 'access',
+    loadComponent: () => import('./pages/access-control/access-control.component').then((m) => m.AccessControlComponent)
+  },
+  {
+    path: 'subscriptions',
+    loadComponent: () => import('./pages/subscriptions/subscriptions.component').then((m) => m.SubscriptionsComponent)
+  },
+  {
+    path: 'guests',
+    loadComponent: () => import('./pages/guests/guests.component').then((m) => m.GuestsComponent)
+  },
+  {
+    path: 'settings',
+    loadComponent: () => import('./pages/settings/settings.component').then((m) => m.SettingsComponent)
+  },
+  {
+    path: 'admin',
+    children: [
+      { path: 'reports', redirectTo: '/reports', pathMatch: 'full' },
+      { path: 'settings', redirectTo: '/settings', pathMatch: 'full' }
+    ]
+  },
+  {
+    path: 'communication',
+    children: [{ path: 'messages', redirectTo: '/messages', pathMatch: 'full' }]
+  },
+  {
+    path: 'workout-tracker',
+    loadComponent: () => import('./pages/workout-tracker/workout-tracker.component').then((m) => m.WorkoutTrackerComponent)
+  },
+  {
+    path: 'meal-plan',
+    loadComponent: () => import('./pages/meal-plan/meal-plan.component').then((m) => m.MealPlanComponent)
+  },
+  {
+    path: 'meal-plan/:id',
+    loadComponent: () => import('./pages/meal-details/meal-details.component').then((m) => m.MealDetailsComponent)
+  },
   { path: '**', redirectTo: '/dashboard' }
 ];

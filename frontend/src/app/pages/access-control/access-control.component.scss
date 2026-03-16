@@ -65,3 +65,23 @@
 .result {
   margin-top: 10px;
 }
+
+.loading {
+  color: #6b7280;
+  margin-bottom: 10px;
+}
+
+.error {
+  color: #991b1b;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.error-inline {
+  margin-top: 8px;
+  color: #b91c1c;
+  font-size: 13px;
+}

@@ -270,6 +270,9 @@ export interface Guest {
   id: number;
   firstName: string;
   lastName: string;
-  email: string;
   status: string;
+  email?: string | null;
+  dateOfBirth?: string | null;
+  sponsorMemberId?: number | null;
+  sponsorName?: string | null;
 }

@@ -9,9 +9,11 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Riada.API.Auth;
 using Riada.API.Middleware;
+using Riada.API.Security;
 using Riada.Application;
 using Riada.Application.UseCases.Analytics;
 using Riada.Infrastructure;
+using Riada.Infrastructure.BackgroundJobs;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,8 +25,14 @@ builder.Services.AddInfrastructure(builder.Configuration);
 var connectionString = builder.Configuration.GetConnectionString("RiadaDb")!;
 builder.Services.AddScoped(_ => new GetMemberRiskScoresUseCase(connectionString));
 
-// ── Authentication (JWT Bearer) ──
+// ── Authentication (JWT Bearer with environment-based secrets) ──
 var jwtConfig = builder.Configuration.GetSection("Jwt");
+var jwtSecret = JwtSecretProvider.GetSecretKey();
+
+// Register token service for JWT generation and refresh
+builder.Services.AddSingleton<ITokenService>(sp => 
+    new JwtTokenService(builder.Configuration, sp.GetRequiredService<ILogger<JwtTokenService>>()));
+
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -37,8 +45,8 @@ builder.Services
             ValidateIssuerSigningKey = true,
             ValidIssuer = jwtConfig["Issuer"],
             ValidAudience = jwtConfig["Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(jwtConfig["SecretKey"]!))
+            IssuerSigningKey = new SymmetricSecurityKey(jwtSecret),
+            ClockSkew = TimeSpan.FromSeconds(30) // 30 second clock skew tolerance
         };
     });
 
@@ -90,27 +98,42 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// ── CORS (for Angular/Electron/React Native) ──
+// ── CORS (environment-aware, restrictive defaults) ──
+var allowedOrigins = builder.Environment.IsDevelopment()
+    ? new[] { "http://localhost:4200", "http://localhost:4201" }
+    : new[] { builder.Configuration["AllowedOrigins:Production"] ?? "https://riada.example.com" };
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontends", policy =>
+    {
         policy
-            .SetIsOriginAllowed(origin =>
-            {
-                if (string.IsNullOrWhiteSpace(origin))
-                {
-                    return false;
-                }
+            .WithOrigins(allowedOrigins)
+            .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+            .WithHeaders("Authorization", "Content-Type", "Accept")
+            .AllowCredentials();
 
-                var uri = new Uri(origin);
-                return uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase);
-            })
-            .AllowAnyHeader()
-            .AllowAnyMethod()
-            .AllowCredentials());
+        // Add security headers for CORS requests
+        if (!builder.Environment.IsDevelopment())
+        {
+            policy.WithExposedHeaders("X-Content-Type-Options", "X-Frame-Options");
+        }
+    });
 });
 
+// ── Hosted background jobs ──
+builder.Services.AddHostedService<ExpireContractsJob>();
+builder.Services.AddHostedService<ExpireInvoicesJob>();
+
 var app = builder.Build();
+
+// Log security configuration on startup
+if (app.Environment.IsDevelopment())
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogWarning("⚠️  Development mode enabled. Ensure JWT_SECRET_KEY environment variable is set.");
+    logger.LogWarning("⚠️  CORS restricted to: {AllowedOrigins}", string.Join(", ", allowedOrigins));
+}
 
 // ── Middleware pipeline ──
 app.UseMiddleware<GlobalExceptionHandler>();
@@ -125,11 +148,22 @@ app.UseHttpsRedirection();
 app.UseCors("AllowFrontends");
 app.UseAuthentication();
 
-// Dev-only: allow frontends to hit APIs without JWT while preserving role-based policies.
-if (app.Environment.IsDevelopment())
+// ── Development bypass with explicit environment variable flag ──
+// This ensures dev bypass isn't accidentally enabled in production
+var allowDevBypass = bool.TryParse(
+    Environment.GetEnvironmentVariable("ALLOW_DEV_BYPASS"), 
+    out var result) && result;
+
+if (app.Environment.IsDevelopment() && allowDevBypass)
 {
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogWarning(
+        "⚠️  SECURITY WARNING: Development bypass is ENABLED. " +
+        "This bypasses JWT validation. Only use for local development with trusted code.");
+    
     app.Use(async (context, next) =>
     {
+        // Only bypass if user is NOT already authenticated with valid JWT
         if (context.User?.Identity?.IsAuthenticated != true)
         {
             var identity = new ClaimsIdentity("DevBypass");
@@ -144,6 +178,11 @@ if (app.Environment.IsDevelopment())
 
         await next();
     });
+}
+else if (app.Environment.IsDevelopment())
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogInformation("✅ Development bypass is DISABLED. Valid JWT required for all requests.");
 }
 
 app.UseAuthorization();

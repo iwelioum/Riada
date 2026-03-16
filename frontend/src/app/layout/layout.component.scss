@@ -18,6 +18,7 @@
     width: 76px;
 
     .label,
+    .group-title,
     .brand-sub,
     .sidebar-card,
     .logout {
@@ -59,7 +60,22 @@
 .nav-menu {
   display: flex;
   flex-direction: column;
+  gap: 0.8rem;
+}
+
+.nav-group {
+  display: flex;
+  flex-direction: column;
   gap: 0.35rem;
+}
+
+.group-title {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.35px;
+  color: var(--muted-foreground);
+  font-weight: 700;
+  padding: 0 0.65rem;
 }
 
 .nav-link {

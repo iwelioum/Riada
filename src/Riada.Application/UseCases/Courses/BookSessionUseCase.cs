@@ -1,3 +1,4 @@
+using FluentValidation;
 using Riada.Application.DTOs.Requests.Courses;
 using Riada.Domain.Entities.CourseScheduling;
 using Riada.Domain.Enums;
@@ -8,15 +9,18 @@ namespace Riada.Application.UseCases.Courses;
 
 public class BookSessionUseCase
 {
+    private readonly IValidator<BookSessionRequest> _validator;
     private readonly IClassSessionRepository _sessionRepository;
     private readonly IMemberRepository _memberRepository;
     private readonly IBookingRepository _bookingRepository;
 
     public BookSessionUseCase(
+        IValidator<BookSessionRequest> validator,
         IClassSessionRepository sessionRepository,
         IMemberRepository memberRepository,
         IBookingRepository bookingRepository)
     {
+        _validator = validator;
         _sessionRepository = sessionRepository;
         _memberRepository = memberRepository;
         _bookingRepository = bookingRepository;
@@ -24,6 +28,7 @@ public class BookSessionUseCase
 
     public async Task<string> ExecuteAsync(BookSessionRequest request, CancellationToken ct = default)
     {
+        await _validator.ValidateAndThrowAsync(request, ct);
         var session = await _sessionRepository.GetWithBookingsAsync(request.SessionId, ct)
             ?? throw new NotFoundException("ClassSession", request.SessionId);
 

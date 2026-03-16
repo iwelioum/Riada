@@ -8,6 +8,7 @@
 
   <div class="form-card">
     <h3>Register guest</h3>
+    <div class="error" *ngIf="formError">{{ formError }}</div>
     <div class="form-grid">
       <label>Sponsor member ID
         <input type="number" [(ngModel)]="form.sponsorMemberId">
@@ -25,8 +26,13 @@
         <input type="date" [(ngModel)]="form.dateOfBirth">
       </label>
     </div>
-    <button class="btn btn-primary" (click)="registerGuest()">Register</button>
+    <button class="btn btn-primary" (click)="registerGuest()" [disabled]="submitting">
+      {{ submitting ? 'Registering...' : 'Register' }}
+    </button>
   </div>
+
+  <div class="error" *ngIf="errorMessage">{{ errorMessage }}</div>
+  <div class="success" *ngIf="successMessage">{{ successMessage }}</div>
 
   <div class="table-section">
     <div class="loading" *ngIf="loading">Loading guests...</div>
@@ -34,7 +40,8 @@
       <thead>
         <tr>
           <th>Name</th>
-          <th>Email</th>
+          <th>Sponsor</th>
+          <th>Date of birth</th>
           <th>Status</th>
           <th>Actions</th>
         </tr>
@@ -42,12 +49,25 @@
       <tbody>
         <tr *ngFor="let guest of guests">
           <td>{{ guest.firstName }} {{ guest.lastName }}</td>
-          <td>{{ guest.email || '—' }}</td>
+          <td>{{ guest.sponsorName || guest.sponsorMemberId || '—' }}</td>
+          <td>{{ guest.dateOfBirth | date:'mediumDate' }}</td>
           <td>{{ guest.status }}</td>
-          <td><button class="btn btn-secondary" (click)="banGuest(guest.id)">Ban</button></td>
+          <td>
+            <ng-container *ngIf="pendingBanId !== guest.id; else confirmBan">
+              <button class="btn btn-secondary" (click)="requestBanGuest(guest.id)" [disabled]="banningGuestId !== null || !canBanGuest(guest)">
+                {{ canBanGuest(guest) ? 'Ban' : 'Banned' }}
+              </button>
+            </ng-container>
+            <ng-template #confirmBan>
+              <button class="btn btn-secondary" (click)="banGuest(guest.id)" [disabled]="banningGuestId === guest.id">
+                {{ banningGuestId === guest.id ? 'Banning...' : 'Confirm' }}
+              </button>
+              <button class="btn btn-light" (click)="cancelBanGuest()" [disabled]="banningGuestId === guest.id">Cancel</button>
+            </ng-template>
+          </td>
         </tr>
       </tbody>
     </table>
-    <div class="empty-state" *ngIf="!loading && !guests.length">No guests registered.</div>
+    <div class="empty-state" *ngIf="!loading && hasLoadedGuests && !guests.length">No guests registered.</div>
   </div>
 </div>

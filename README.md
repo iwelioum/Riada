@@ -237,7 +237,9 @@ ngOnInit() {
 }
 ```
 
-**Configured API URL:** `https://localhost:7001/api`
+**Configured API URL files:**
+- `frontend/src/environments/environment.ts`
+- `frontend/src/environments/environment.production.ts`
 
 ### 📱 Responsive Design
 

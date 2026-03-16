@@ -1,3 +1,4 @@
+using FluentValidation;
 using Riada.Application.DTOs.Requests.Guests;
 using Riada.Application.DTOs.Responses.Guests;
 using Riada.Domain.Entities.AccessControl;
@@ -8,15 +9,19 @@ namespace Riada.Application.UseCases.Guests;
 
 public class RegisterGuestUseCase
 {
+    private readonly IValidator<RegisterGuestRequest> _validator;
     private readonly IGuestRepository _guestRepository;
 
-    public RegisterGuestUseCase(IGuestRepository guestRepository)
+    public RegisterGuestUseCase(IValidator<RegisterGuestRequest> validator, IGuestRepository guestRepository)
     {
+        _validator = validator;
         _guestRepository = guestRepository;
     }
 
     public async Task<GuestResponse> ExecuteAsync(RegisterGuestRequest request, CancellationToken ct = default)
     {
+        await _validator.ValidateAndThrowAsync(request, ct);
+
         var guest = new Guest
         {
             SponsorMemberId = request.SponsorMemberId,

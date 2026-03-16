@@ -9,11 +9,13 @@ public class GlobalExceptionHandler
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<GlobalExceptionHandler> _logger;
+    private readonly IHostEnvironment _environment;
 
-    public GlobalExceptionHandler(RequestDelegate next, ILogger<GlobalExceptionHandler> logger)
+    public GlobalExceptionHandler(RequestDelegate next, ILogger<GlobalExceptionHandler> logger, IHostEnvironment environment)
     {
         _next = next;
         _logger = logger;
+        _environment = environment;
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -25,13 +27,14 @@ public class GlobalExceptionHandler
         catch (Exception ex)
         {
             _logger.LogError(ex, "Unhandled exception: {Message}", ex.Message);
-            await HandleExceptionAsync(context, ex);
+            await HandleExceptionAsync(context, ex, _environment.IsDevelopment());
         }
     }
 
-    private static async Task HandleExceptionAsync(HttpContext context, Exception exception)
+    private static async Task HandleExceptionAsync(HttpContext context, Exception exception, bool isDevelopment)
     {
         context.Response.ContentType = "application/json";
+        var internalErrorMessage = isDevelopment ? exception.Message : "An unexpected error occurred.";
 
         var (statusCode, response) = exception switch
         {
@@ -57,7 +60,7 @@ public class GlobalExceptionHandler
                     ex.Errors.Select(e => new { e.PropertyName, e.ErrorMessage }))),
 
             _ => (HttpStatusCode.InternalServerError,
-                new ErrorResponse("INTERNAL_ERROR", "An unexpected error occurred."))
+                new ErrorResponse("INTERNAL_ERROR", internalErrorMessage))
         };
 
         context.Response.StatusCode = (int)statusCode;

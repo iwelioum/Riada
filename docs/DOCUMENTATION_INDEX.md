@@ -134,6 +134,15 @@
   - Exception handling
 - **→ [Voir le fichier](./PATTERN_GUIDE.md)**
 
+### **ai-agents/README.md** 🤖
+- **Duree:** 3-5 min de lecture
+- **Pour:** Voir les definitions des agents IA du master prompt v2
+- **Contient:**
+  - Gouvernance (Supreme Architect, Mission Control)
+  - Agents techniques par domaine (backend, database, frontend, quality, security, devops)
+  - Self evolution engine
+- **→ [Voir le dossier](./ai-agents/README.md)**
+
 ---
 
 ## 🔧 Scripts d'Automatisation

@@ -2,9 +2,17 @@
   max-width: 1200px;
 
   h2 {
-    margin-bottom: 30px;
+    margin-bottom: 6px;
     color: #1f2937;
   }
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 18px;
 }
 
 .plans-grid {
@@ -27,6 +35,10 @@
   &:hover {
     box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
     transform: translateY(-4px);
+  }
+
+  &.active {
+    border: 2px solid #6366f1;
   }
 
   h3 {
@@ -69,6 +81,44 @@
       background-color: #4f46e5;
     }
   }
+}
+
+.btn {
+  padding: 10px 16px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-outline {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+}
+
+.loading {
+  color: #6b7280;
+  margin-bottom: 10px;
+}
+
+.error {
+  color: #991b1b;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.empty-state {
+  color: #6b7280;
+  padding: 14px;
+}
+
+.options-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
 }
 
 .active-subscriptions {

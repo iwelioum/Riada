@@ -1,29 +1,41 @@
 <div class="subscriptions-container">
   <div class="page-header">
-    <h2>Subscription Plans</h2>
-    <p class="text-muted">Plans disponibles et options associées.</p>
+    <div>
+      <h2>Subscription Plans</h2>
+      <p class="text-muted">Plans disponibles et options associées.</p>
+    </div>
+    <button class="btn btn-outline" (click)="loadPlans()" [disabled]="loadingPlans">Refresh plans</button>
   </div>
-  
-  <div class="plans-grid">
-    <div class="plan-card" *ngFor="let plan of plans" (click)="loadOptions(plan.id)">
+
+  <div class="loading" *ngIf="loadingPlans">Loading subscription plans...</div>
+  <div class="error" *ngIf="plansError">{{ plansError }}</div>
+
+  <div class="plans-grid" *ngIf="!loadingPlans && plans.length">
+    <div class="plan-card" *ngFor="let plan of plans" (click)="selectPlan(plan.id)" [class.active]="selectedPlanId === plan.id">
       <h3>{{ plan.planName }}</h3>
-      <p class="price">${{ plan.basePrice }}/month</p>
+      <p class="price">${{ plan.basePrice | number:'1.2-2' }}/month</p>
       <ul class="features">
         <li>Commitment: {{ plan.commitmentMonths }} months</li>
         <li>Enrollment fee: {{ plan.enrollmentFee | currency:'USD':'symbol':'1.0-0' }}</li>
         <li>Limited access: {{ plan.limitedClubAccess ? 'Yes' : 'No' }}</li>
         <li>Duo pass: {{ plan.duoPassAllowed ? 'Yes' : 'No' }}</li>
       </ul>
-      <button class="btn btn-primary">Use for contract</button>
+      <button class="btn btn-primary" type="button">Select plan</button>
     </div>
   </div>
+  <div class="empty-state" *ngIf="!loadingPlans && hasLoadedPlans && !plans.length && !plansError">No subscription plans available.</div>
 
   <div class="options" *ngIf="selectedPlanId">
-    <h3>Options for {{ selectedPlanName }}</h3>
+    <div class="options-header">
+      <h3>Options for {{ selectedPlanName }}</h3>
+      <button class="btn btn-outline" (click)="refreshSelectedPlanOptions()" [disabled]="loadingOptions">Reload options</button>
+    </div>
+    <div class="loading" *ngIf="loadingOptions">Loading options...</div>
+    <div class="error" *ngIf="optionsError">{{ optionsError }}</div>
     <div class="option-card" *ngFor="let opt of currentOptions">
       <div class="option-name">{{ opt.optionName }}</div>
       <div class="text-muted">${{ opt.monthlyPrice | number:'1.2-2' }}/month</div>
     </div>
-    <div class="empty-state" *ngIf="!currentOptions.length">No add-on options.</div>
+    <div class="empty-state" *ngIf="!loadingOptions && !currentOptions.length && !optionsError">No add-on options.</div>
   </div>
 </div>
