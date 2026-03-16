@@ -680,3 +680,38 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 - Documentation-only synchronization; no runtime behavior changes introduced.
 
 ---
+
+## Cycle 8 — Final Validation & Deployment Prep
+
+### [2026-03-16] GOVERNOR — End-to-End Validation Gate
+
+**PROBLEM:** Before deployment preparation, the repository needed a full cross-surface validation pass (backend, security checks, monitoring gates, frontend build/E2E smoke, and container config sanity).
+
+**DECISION:** Execute a strict final validation sequence and record remaining operational blockers explicitly rather than masking them.
+
+**IMPLEMENTATION / VALIDATION RUN:**
+- Backend full suite:
+  - `dotnet test Riada.sln --nologo` ✅ (79 passed, 0 failed; known integration test discovery warning unchanged)
+- Security-focused unit gate:
+  - `dotnet test tests\Riada.UnitTests\Riada.UnitTests.csproj --nologo --filter "FullyQualifiedName~Riada.UnitTests.Security|FullyQualifiedName~SecurityHeadersMiddlewareTests"` ✅
+- Monitoring gate:
+  - `pwsh -File scripts\Monitoring\Run-MonitoringChecks.ps1 -Ci` ✅
+  - Note: DB runtime query soft-skipped when `mysql` CLI is unavailable in runner
+- Performance baseline gate:
+  - `pwsh -File scripts\Monitoring\Assert-PerformanceBaseline.ps1` ✅
+- Frontend build:
+  - `cd frontend && npm run build` ✅ (existing SCSS budget warnings unchanged)
+- Frontend smoke E2E:
+  - `cd frontend && npm run e2e:smoke -- --config baseUrl=http://localhost:4201` ✅
+- Container config validation:
+  - `docker compose -f scripts\Docker\docker-compose.yml config` ✅ (expected env-var warnings when local env vars are unset)
+
+**PATTERN APPRIS:**
+1. A final gate should combine policy checks (security/perf/monitoring) with executable smoke paths, not only unit tests.
+2. CI-safe monitoring with explicit soft-skip behavior prevents false negatives in shared environments.
+3. Release readiness must include repository hygiene status (staged/committed state), not just passing test commands.
+
+**RESIDUAL BLOCKERS (TRACKED):**
+- Security hardening code remains present as local unstaged changes in the working tree and requires explicit review/commit before production handoff finalization.
+
+---
