@@ -379,3 +379,97 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 - ✅ Documentation: decisions.md updated with implementation details
 
 ---
+
+## Cycle 3 — Frontend Modernization, Quality & Security Audit
+**DATE:** 2026-03-16 | **SESSION TYPE:** Frontend + QA + Security
+
+### [2026-03-16] FRONTEND_WIZARD — OnPush + Signals + SCSS Foundation
+
+**PROBLEM:** Critical Angular pages used default change detection, no shared Signal state layer, and duplicated style primitives.
+
+**DECISION:** Apply OnPush to high-traffic pages, add a Signal-based `StateService`, and centralize style tokens/utilities.
+
+**IMPLEMENTATION:**
+- OnPush applied to: Dashboard, Guests, Classes, Billing, Schedule.
+- Added `frontend/src/app/core/services/state.service.ts` with signals + computed/effect usage.
+- Added `frontend/src/styles/_variables.scss` and `_utilities.scss`, wired in `styles.scss`.
+
+**PATTERN APPRIS:**
+1. OnPush migrations should pair with explicit async update review (`markForCheck` where needed).
+2. Shared Signal services reduce page-level state duplication.
+3. Utility + variable layers provide safer styling consistency than ad-hoc component-level duplication.
+
+**REGRESSION TEST:**
+- `npm run build` ✅
+- No frontend compile errors.
+
+---
+
+### [2026-03-16] QUALITY_GUARDIAN — E2E Scaffold + Service Test Expansion
+
+**PROBLEM:** E2E framework and service-layer unit coverage were insufficient for reliable regression detection.
+
+**DECISION:** Introduce Cypress structure, add core service specs, and validate coverage baseline with headless execution.
+
+**IMPLEMENTATION:**
+- Added Cypress config + support/page-object scaffolding.
+- Added 6 E2E spec files under `frontend/cypress/e2e`.
+- Added unit tests:
+  - `api.service.spec.ts`
+  - `auth-session.service.spec.ts`
+  - `state.service.spec.ts`
+- Updated npm e2e scripts to use direct Cypress CLI entrypoint in this environment.
+
+**PATTERN APPRIS:**
+1. Keep E2E test organization domain-based (login, guests, sessions, invoicing, dashboard, error flows).
+2. Pair UI test scaffolding with service unit tests for fast feedback loops.
+3. In constrained environments, use explicit CLI entrypoints instead of relying on npm bin shims.
+
+**REGRESSION TEST:**
+- `npm run test -- --watch=false --browsers=ChromeHeadless --code-coverage --no-progress` ✅
+- 41/41 tests passing, coverage baseline generated.
+
+---
+
+### [2026-03-16] SECURITY_SHIELD — Penetration Testing Consolidation
+
+**PROBLEM:** Security hardening required practical verification against API attack vectors and frontend token handling risk.
+
+**DECISION:** Execute penetration campaign on exposed endpoints and classify findings by severity with actionable remediations.
+
+**IMPLEMENTATION:**
+- Assessed 33 endpoints.
+- Generated `docs/SECURITY_PENETRATION_TEST_REPORT.md`.
+- Persisted findings in `penetration_findings` + `endpoint_coverage` SQL tables.
+
+**RESULTS:**
+- Critical: 0
+- High: 0
+- Medium: 3
+- Low: 2
+
+**PATTERN APPRIS:**
+1. In-memory revocation is acceptable for local dev but not production-grade token lifecycle control.
+2. IP-only rate limiting is a baseline; user-aware rate limits are required for resilient abuse prevention.
+3. JWT storage strategy should be evaluated with XSS threat model (HttpOnly cookie path preferred for high-security contexts).
+
+**REGRESSION TEST:**
+- No exploitable SQL injection or RBAC bypass discovered during cycle scope.
+
+---
+
+### [2026-03-16] GOVERNOR — Cycle 3 Stabilization Fixes
+
+**PROBLEM:** Cross-solution validation exposed backend breakages unrelated to frontend code path but blocking a green CI state.
+
+**DECISION:** Apply minimal, compatibility-focused fixes to restore build/test reliability before closing Cycle 3.
+
+**IMPLEMENTATION:**
+- `RateLimitConfig.cs`: replaced incompatible custom `IRateLimitConfiguration` implementation with framework implementation and corrected processing strategy type.
+- `JwtTokenService.cs`: added `jti` and explicit `"role"` claims to avoid token collisions and ensure role claim interoperability.
+
+**REGRESSION TEST:**
+- `dotnet test Riada.sln --nologo` ✅ (74/74)
+- Frontend test/build gates remained green.
+
+---

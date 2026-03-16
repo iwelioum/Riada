@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -10,7 +10,8 @@ import { Guest } from '../../core/models/api-models';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './guests.component.html',
-  styleUrl: './guests.component.scss'
+  styleUrl: './guests.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class GuestsComponent implements OnInit {
   guests: Guest[] = [];
@@ -24,7 +25,7 @@ export class GuestsComponent implements OnInit {
   formError: string | null = null;
   form = { sponsorMemberId: null as number | null, firstName: '', lastName: '', email: '', dateOfBirth: '' };
 
-  constructor(private api: ApiService) {}
+  constructor(private api: ApiService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
     this.loadGuests();
@@ -34,6 +35,7 @@ export class GuestsComponent implements OnInit {
     this.hasLoadedGuests = false;
     this.loading = true;
     this.errorMessage = null;
+    this.cdr.markForCheck();
     this.api.listGuests().subscribe({
       next: (guests) => {
         this.guests = [...(guests || [])].sort((left, right) => {
@@ -43,12 +45,14 @@ export class GuestsComponent implements OnInit {
         });
         this.hasLoadedGuests = true;
         this.loading = false;
+        this.cdr.markForCheck();
       },
       error: (error) => {
         this.guests = [];
         this.errorMessage = this.getErrorMessage(error, 'Failed to load guests.');
         this.hasLoadedGuests = true;
         this.loading = false;
+        this.cdr.markForCheck();
       }
     });
   }
@@ -61,6 +65,7 @@ export class GuestsComponent implements OnInit {
     }
 
     this.submitting = true;
+    this.cdr.markForCheck();
     this.api
       .registerGuest({
         sponsorMemberId: Number(this.form.sponsorMemberId),
@@ -74,11 +79,13 @@ export class GuestsComponent implements OnInit {
           this.successMessage = 'Guest registered.';
           this.resetForm();
           this.submitting = false;
+          this.cdr.markForCheck();
           this.loadGuests();
         },
         error: (error) => {
           this.formError = this.getErrorMessage(error, 'Failed to register guest.');
           this.submitting = false;
+          this.cdr.markForCheck();
         }
       });
   }
@@ -102,22 +109,30 @@ export class GuestsComponent implements OnInit {
     if (!this.canBanGuest(guest)) {
       this.errorMessage = 'This guest is already banned.';
       this.pendingBanId = null;
+      this.cdr.markForCheck();
       return;
     }
 
     this.banningGuestId = id;
+    this.cdr.markForCheck();
     this.api.banGuest(id).subscribe({
       next: () => {
         this.successMessage = 'Guest banned.';
         this.pendingBanId = null;
         this.banningGuestId = null;
+        this.cdr.markForCheck();
         this.loadGuests();
       },
       error: (error) => {
         this.errorMessage = this.getErrorMessage(error, 'Failed to ban guest.');
         this.banningGuestId = null;
+        this.cdr.markForCheck();
       }
     });
+  }
+
+  trackByGuest(index: number, guest: Guest): number {
+    return guest.id;
   }
 
   private validateGuestForm(): string | null {

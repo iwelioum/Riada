@@ -8,7 +8,7 @@
     <div class="header-actions">
       <select [(ngModel)]="clubId" (change)="loadMetrics()" [disabled]="loading || clubsLoading || !clubs.length">
         <option [ngValue]="null">Select club</option>
-        <option *ngFor="let club of clubs" [ngValue]="club.id">{{ club.name }}</option>
+        <option *ngFor="let club of clubs; trackBy: trackByClub" [ngValue]="club.id">{{ club.name }}</option>
       </select>
       <button class="pill ghost" (click)="refresh()" [disabled]="loading || clubsLoading">Refresh</button>
     </div>
@@ -21,7 +21,7 @@
   <div class="status warn" *ngIf="!errorMessage && partialErrors.length">
     <div>Some widgets could not be refreshed:</div>
     <ul>
-      <li *ngFor="let issue of partialErrors">{{ issue }}</li>
+      <li *ngFor="let issue of partialErrors; trackBy: trackByError">{{ issue }}</li>
     </ul>
   </div>
 
@@ -63,7 +63,7 @@
         </div>
 
         <div class="session-list" *ngIf="firstSessions().length; else noSessions">
-          <div class="session" *ngFor="let session of firstSessions()">
+          <div class="session" *ngFor="let session of firstSessions(); trackBy: trackBySession">
             <div>
               <div class="session-name">{{ session.courseName }}</div>
               <div class="text-muted">{{ session.instructorName }} · {{ session.clubName }}</div>
@@ -86,7 +86,7 @@
         </div>
 
         <div class="risk-list" *ngIf="riskAlerts.length; else noRisk">
-          <div class="risk" *ngFor="let alert of riskAlerts">
+          <div class="risk" *ngFor="let alert of riskAlerts; trackBy: trackByRisk">
             <div>
               <div class="risk-name">{{ alert.memberName || 'Member' }}</div>
               <div class="text-muted">Score: {{ alert.score }}</div>
@@ -106,7 +106,7 @@
         <span class="text-muted">Pour gagner du temps côté réception</span>
       </div>
       <div class="actions">
-        <button *ngFor="let action of quickActions" class="action-btn" (click)="runQuickAction(action)">
+        <button *ngFor="let action of quickActions; trackBy: trackByAction" class="action-btn" (click)="runQuickAction(action)">
           <span class="icon">{{ action.icon }}</span>
           {{ action.label }}
         </button>
@@ -131,7 +131,7 @@
       <span class="text-muted">Chargement des données...</span>
     </div>
     <div class="actions">
-      <button *ngFor="let action of quickActions" class="action-btn" disabled>
+      <button *ngFor="let action of quickActions; trackBy: trackByAction" class="action-btn" disabled>
         <span class="icon">{{ action.icon }}</span>
         {{ action.label }}
       </button>

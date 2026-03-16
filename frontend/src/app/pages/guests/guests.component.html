@@ -47,7 +47,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let guest of guests">
+        <tr *ngFor="let guest of guests; trackBy: trackByGuest">
           <td>{{ guest.firstName }} {{ guest.lastName }}</td>
           <td>{{ guest.sponsorName || guest.sponsorMemberId || '—' }}</td>
           <td>{{ guest.dateOfBirth | date:'mediumDate' }}</td>

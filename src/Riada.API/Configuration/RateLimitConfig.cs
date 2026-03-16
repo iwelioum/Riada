@@ -19,8 +19,8 @@ public static class RateLimitConfig
         // Add rate limiting services
         services.AddSingleton<IIpPolicyStore, MemoryCacheIpPolicyStore>();
         services.AddSingleton<IRateLimitCounterStore, MemoryCacheRateLimitCounterStore>();
-        services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>();
-        services.AddSingleton<IProcessingStrategy, AsyncKeyedLockProcessingStrategy>();
+        services.AddSingleton<IRateLimitConfiguration, AspNetCoreRateLimit.RateLimitConfiguration>();
+        services.AddSingleton<IProcessingStrategy, AsyncKeyLockProcessingStrategy>();
 
         return services;
     }
@@ -29,42 +29,5 @@ public static class RateLimitConfig
     {
         app.UseIpRateLimiting();
         return app;
-    }
-}
-
-/// <summary>
-/// Custom rate limit configuration to define endpoint-specific policies.
-/// </summary>
-public class RateLimitConfiguration : IRateLimitConfiguration
-{
-    private readonly IConfiguration _configuration;
-    private readonly ILogger<RateLimitConfiguration> _logger;
-
-    public RateLimitConfiguration(IConfiguration configuration, ILogger<RateLimitConfiguration> logger)
-    {
-        _configuration = configuration;
-        _logger = logger;
-    }
-
-    public IReadOnlyDictionary<string, IReadOnlyList<IClientPolicy>> ClientWhitelistPolices { get; } =
-        new Dictionary<string, IReadOnlyList<IClientPolicy>>();
-
-    public IReadOnlyDictionary<string, IReadOnlyList<IEndpointRateLimitPolicy>>
-        EndpointWhitelistPolices { get; } =
-        new Dictionary<string, IReadOnlyList<IEndpointRateLimitPolicy>>();
-
-    public IReadOnlyDictionary<string, IRateLimitPolicy> RateLimitPolicies { get; } =
-        new Dictionary<string, IRateLimitPolicy>();
-
-    public void RegisterConfiguration()
-    {
-        var loginAttempts = _configuration.GetValue<int>("RateLimit:Login:Attempts", 5);
-        var loginWindow = _configuration.GetValue<int>("RateLimit:Login:WindowMinutes", 1);
-        var registerAttempts = _configuration.GetValue<int>("RateLimit:Register:Attempts", 3);
-        var registerWindow = _configuration.GetValue<int>("RateLimit:Register:WindowHours", 1);
-
-        _logger.LogInformation(
-            "✅ Rate limiting configured: Login {LoginAttempts}/{LoginWindow}m, Register {RegisterAttempts}/{RegisterWindow}h",
-            loginAttempts, loginWindow, registerAttempts, registerWindow);
     }
 }

@@ -1,6 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
@@ -11,7 +11,8 @@ import { ClassSession, ClubSummary } from '../../core/models/api-models';
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './classes.component.html',
-  styleUrl: './classes.component.scss'
+  styleUrl: './classes.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ClassesComponent implements OnInit {
   sessions: ClassSession[] = [];
@@ -29,7 +30,7 @@ export class ClassesComponent implements OnInit {
   bookingMemberId: number | null = null;
   bookingInProgress = false;
 
-  constructor(private apiService: ApiService) {}
+  constructor(private apiService: ApiService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
     this.loadClubs();
@@ -38,6 +39,7 @@ export class ClassesComponent implements OnInit {
   loadClubs(): void {
     this.clubsLoading = true;
     this.clubsError = null;
+    this.cdr.markForCheck();
     this.apiService.listClubs().subscribe({
       next: (clubs) => {
         this.clubs = clubs || [];
@@ -48,6 +50,7 @@ export class ClassesComponent implements OnInit {
           this.clubId = null;
         }
         this.clubsLoading = false;
+        this.cdr.markForCheck();
         this.loadSessions();
       },
       error: (error) => {
@@ -55,6 +58,7 @@ export class ClassesComponent implements OnInit {
         this.clubId = null;
         this.clubsLoading = false;
         this.clubsError = this.getErrorMessage(error, 'Unable to load clubs.');
+        this.cdr.markForCheck();
         this.loadSessions();
       }
     });
@@ -68,6 +72,7 @@ export class ClassesComponent implements OnInit {
       this.sessions = [];
       this.pageError = 'Days filter must be between 1 and 60.';
       this.hasLoadedSessions = true;
+      this.cdr.markForCheck();
       return;
     }
 
@@ -75,22 +80,27 @@ export class ClassesComponent implements OnInit {
       this.sessions = [];
       this.loading = false;
       this.hasLoadedSessions = true;
+      this.cdr.markForCheck();
       return;
     }
 
     this.loading = true;
+    this.cdr.markForCheck();
     this.apiService.getUpcomingSessions(this.clubId, this.days).subscribe({
       next: (data) => {
         this.sessions = [...(data || [])].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
         this.hasLoadedSessions = true;
+        this.cdr.markForCheck();
       },
       error: (error) => {
         this.sessions = [];
         this.pageError = this.getErrorMessage(error, 'Unable to load sessions.');
         this.hasLoadedSessions = true;
+        this.cdr.markForCheck();
       },
       complete: () => {
         this.loading = false;
+        this.cdr.markForCheck();
       }
     });
   }

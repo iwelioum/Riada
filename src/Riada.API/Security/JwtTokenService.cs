@@ -122,6 +122,7 @@ public class JwtTokenService : ITokenService
         {
             new(ClaimTypes.NameIdentifier, userId),
             new(ClaimTypes.Name, userId),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N")),
             new("iat", DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()),
             new("typ", "access_token")
         };
@@ -130,6 +131,7 @@ public class JwtTokenService : ITokenService
         foreach (var role in roles ?? Array.Empty<string>())
         {
             claims.Add(new Claim(ClaimTypes.Role, role));
+            claims.Add(new Claim("role", role));
         }
 
         var key = new SymmetricSecurityKey(_secretKey);
@@ -151,6 +153,7 @@ public class JwtTokenService : ITokenService
         var claims = new List<Claim>
         {
             new(ClaimTypes.NameIdentifier, userId),
+            new(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString("N")),
             new("typ", "refresh_token"),
             new("iat", DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString())
         };

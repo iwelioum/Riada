@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -17,7 +17,8 @@ interface SessionDay {
   standalone: true,
   imports: [CommonModule, FormsModule, RouterLink],
   templateUrl: './schedule.component.html',
-  styleUrl: './schedule.component.scss'
+  styleUrl: './schedule.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ScheduleComponent implements OnInit {
   grouped: SessionDay[] = [];
@@ -30,7 +31,7 @@ export class ScheduleComponent implements OnInit {
   hasLoadedSessions = false;
   lastUpdated: Date | null = null;
 
-  constructor(private api: ApiService) {}
+  constructor(private api: ApiService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
     this.loadClubs();

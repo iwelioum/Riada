@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { forkJoin, of } from 'rxjs';
@@ -18,7 +18,8 @@ interface QuickAction {
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './dashboard.component.html',
-  styleUrl: './dashboard.component.scss'
+  styleUrl: './dashboard.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DashboardComponent implements OnInit {
   stats = {
@@ -48,7 +49,7 @@ export class DashboardComponent implements OnInit {
     { label: 'Open ticket', icon: '🛠️', helperText: 'Use Equipment to report a maintenance issue.' }
   ];
 
-  constructor(private api: ApiService) {}
+  constructor(private api: ApiService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
     this.loadClubsAndMetrics();
@@ -56,6 +57,7 @@ export class DashboardComponent implements OnInit {
 
   loadClubsAndMetrics(): void {
     this.clubsLoading = true;
+    this.cdr.markForCheck();
     this.clubsErrorMessage = null;
     this.api.listClubs().subscribe({
       next: (clubs) => {
@@ -68,6 +70,7 @@ export class DashboardComponent implements OnInit {
           this.clubId = null;
         }
         this.clubsLoading = false;
+        this.cdr.markForCheck();
         this.loadMetrics(null);
       },
       error: (error) => {
@@ -76,6 +79,7 @@ export class DashboardComponent implements OnInit {
         this.stats.clubs = 0;
         this.clubsLoading = false;
         this.clubsErrorMessage = this.getErrorMessage(error, 'Unable to load clubs list.');
+        this.cdr.markForCheck();
         this.loadMetrics(`Clubs: ${this.getErrorMessage(error, 'Unable to load clubs list.')}`);
       }
     });
@@ -87,6 +91,7 @@ export class DashboardComponent implements OnInit {
     this.errorMessage = null;
     this.infoMessage = null;
     this.partialErrors = [];
+    this.cdr.markForCheck();
     const issues: string[] = [];
     const selectedClubId = this.clubId;
 
@@ -130,19 +135,42 @@ export class DashboardComponent implements OnInit {
         if (issues.length >= 3) {
           this.errorMessage = 'Dashboard data is currently unavailable. Please try again.';
         }
+        this.cdr.markForCheck();
       },
       error: () => {
         this.errorMessage = 'Unexpected dashboard failure. Please retry.';
         this.hasLoadedOnce = true;
+        this.cdr.markForCheck();
       },
       complete: () => {
         this.loading = false;
+        this.cdr.markForCheck();
       }
     });
   }
 
   firstSessions(limit = 3): Session[] {
     return this.upcomingSessions.slice(0, limit);
+  }
+
+  trackBySession(index: number, session: Session): number {
+    return session.id || index;
+  }
+
+  trackByRisk(index: number, risk: RiskScore): number {
+    return risk.memberId;
+  }
+
+  trackByClub(index: number, club: ClubSummary): number {
+    return club.id;
+  }
+
+  trackByError(index: number): number {
+    return index;
+  }
+
+  trackByAction(index: number, action: QuickAction): string {
+    return action.label;
   }
 
   refresh(): void {

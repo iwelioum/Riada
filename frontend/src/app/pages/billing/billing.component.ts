@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -10,7 +10,8 @@ import { InvoiceDetail } from '../../core/models/api-models';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './billing.component.html',
-  styleUrl: './billing.component.scss'
+  styleUrl: './billing.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class BillingComponent implements OnInit {
   invoices: InvoiceDetail[] = [];
@@ -39,7 +40,7 @@ export class BillingComponent implements OnInit {
   };
   lastError: string | null = null;
 
-  constructor(private apiService: ApiService) {}
+  constructor(private apiService: ApiService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit() {
     this.loadInvoices();
