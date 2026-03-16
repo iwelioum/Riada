@@ -8,6 +8,7 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Riada.API.Auth;
+using Riada.API.Configuration;
 using Riada.API.Middleware;
 using Riada.API.Security;
 using Riada.Application;
@@ -24,6 +25,9 @@ builder.Services.AddInfrastructure(builder.Configuration);
 // ── Analytics (needs connection string directly) ──
 var connectionString = builder.Configuration.GetConnectionString("RiadaDb")!;
 builder.Services.AddScoped(_ => new GetMemberRiskScoresUseCase(connectionString));
+
+// ── Rate Limiting ──
+builder.Services.AddRateLimiting(builder.Configuration);
 
 // ── Authentication (JWT Bearer with environment-based secrets) ──
 var jwtConfig = builder.Configuration.GetSection("Jwt");
@@ -145,6 +149,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+// Rate limiting should come before CORS and authentication
+app.UseRateLimiting();
+
 app.UseCors("AllowFrontends");
 app.UseAuthentication();
 
