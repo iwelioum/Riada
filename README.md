@@ -177,6 +177,7 @@ Pipelines GitHub Actions actifs dans `.github/workflows/` :
 - `ci-angular.yml` : build/tests Angular + artefacts de couverture
 - `ci-monitoring.yml` : checks monitoring DB/sécurité (mode CI-safe)
 - `ci-docker.yml` : build Docker avec cache Buildx, push GHCR sur `main`
+- `ci-quality-gates.yml` : gates sécurité unitaires + Cypress smoke + baseline performance
 
 ---
 

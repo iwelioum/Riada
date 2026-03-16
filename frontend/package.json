@@ -11,7 +11,8 @@
     "test": "node ./scripts/run-karma.js",
     "e2e": "node ./node_modules/cypress/dist/cli.js open",
     "e2e:run": "node ./node_modules/cypress/dist/cli.js run",
-    "e2e:headless": "node ./node_modules/cypress/dist/cli.js run --headless"
+    "e2e:headless": "node ./node_modules/cypress/dist/cli.js run --headless",
+    "e2e:smoke": "node ./node_modules/cypress/dist/cli.js run --headless --spec cypress/e2e/00-smoke.cy.ts"
   },
   "private": true,
   "dependencies": {

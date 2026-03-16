@@ -1,0 +1,107 @@
+name: Quality Gates CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'frontend/cypress/**'
+      - 'frontend/package.json'
+      - 'frontend/package-lock.json'
+      - 'tests/Riada.UnitTests/Security/**'
+      - 'tests/Riada.UnitTests/Middleware/SecurityHeadersMiddlewareTests.cs'
+      - 'docs/PERFORMANCE_BASELINE.md'
+      - 'scripts/Monitoring/Assert-PerformanceBaseline.ps1'
+      - '.github/workflows/ci-quality-gates.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'frontend/cypress/**'
+      - 'frontend/package.json'
+      - 'frontend/package-lock.json'
+      - 'tests/Riada.UnitTests/Security/**'
+      - 'tests/Riada.UnitTests/Middleware/SecurityHeadersMiddlewareTests.cs'
+      - 'docs/PERFORMANCE_BASELINE.md'
+      - 'scripts/Monitoring/Assert-PerformanceBaseline.ps1'
+      - '.github/workflows/ci-quality-gates.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  security-gate:
+    runs-on: ubuntu-latest
+    name: Security unit gate
+    timeout-minutes: 20
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET SDK 8.x
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.x'
+
+    - name: Run JWT security tests
+      run: dotnet test tests/Riada.UnitTests/Riada.UnitTests.csproj --nologo --filter "FullyQualifiedName~Riada.UnitTests.Security"
+
+    - name: Run security headers middleware tests
+      run: dotnet test tests/Riada.UnitTests/Riada.UnitTests.csproj --nologo --filter "FullyQualifiedName~SecurityHeadersMiddlewareTests"
+
+  e2e-smoke:
+    runs-on: ubuntu-latest
+    name: Frontend E2E smoke gate
+    timeout-minutes: 25
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Run Cypress smoke gate
+      uses: cypress-io/github-action@v6
+      with:
+        working-directory: frontend
+        install-command: npm ci
+        build: npm run build
+        start: npm run serve:dist
+        wait-on: 'http://localhost:4200'
+        wait-on-timeout: 120
+        command: npm run e2e:smoke
+
+    - name: Upload Cypress artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: cypress-smoke-artifacts
+        path: |
+          frontend/cypress/screenshots/**
+          frontend/cypress/videos/**
+        if-no-files-found: warn
+        retention-days: 14
+
+  performance-baseline:
+    runs-on: ubuntu-latest
+    name: Performance baseline gate
+    timeout-minutes: 10
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Validate performance baseline targets
+      shell: pwsh
+      run: ./scripts/Monitoring/Assert-PerformanceBaseline.ps1
+
+    - name: Upload baseline gate summary
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: perf-baseline-gate
+        path: artifacts/monitoring/perf-baseline-gate.json
+        if-no-files-found: warn
+        retention-days: 14
