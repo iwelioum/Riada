@@ -583,3 +583,100 @@ Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
 - `dotnet test Riada.sln --nologo` ✅ (79 passed, 0 failed)
 
 ---
+
+## Cycle 5 — DevOps & CI/CD Enhancements
+
+### [2026-03-16] DEVOPS_COMMANDER — Pipeline Hardening + Docker Delivery
+
+**PROBLEM:** Existing workflows were functional but lacked stronger execution guards, deterministic artifact strategy, and a dedicated container delivery pipeline.
+
+**DECISION:** Harden CI workflows and add a dedicated Docker CI lane with cached builds and controlled publish behavior.
+
+**IMPLEMENTATION:**
+- Updated `.github/workflows/ci-dotnet.yml`:
+  - added `workflow_dispatch`, least-privilege permissions, concurrency cancellation
+  - added NuGet cache, explicit publish output, cleaner artifact upload
+- Updated `.github/workflows/ci-angular.yml`:
+  - added `workflow_dispatch`, permissions, concurrency, timeout
+  - lint step made conditional when no lint script exists
+  - coverage artifact upload normalized
+- Updated `.github/workflows/ci-monitoring.yml`:
+  - added permissions, concurrency, timeout for stable monitoring runs
+- Added `.github/workflows/ci-docker.yml`:
+  - Buildx + GHA cache
+  - PR/develop: build-only validation
+  - `main`: push to GHCR (`latest`, `sha-*`)
+- Updated Docker runtime assets:
+  - `scripts/Docker/Dockerfile`: non-root runtime user, publish optimizations, stricter healthcheck
+  - `scripts/Docker/docker-compose.yml`: explicit API healthcheck
+  - `.dockerignore`: reduced build context size
+
+**PATTERN APPRIS:**
+1. Use `workflow_dispatch` + path filters for controlled execution and easier operations troubleshooting.
+2. Add concurrency cancellation per workflow/ref to avoid duplicate in-flight pipeline consumption.
+3. Separate Docker build validation from publish logic (publish only on guarded branch conditions).
+
+**REGRESSION TEST:**
+- `dotnet test Riada.sln --nologo` ✅
+- `pwsh -File scripts\Monitoring\Run-MonitoringChecks.ps1 -Ci` ✅
+- `cd frontend && npm run build` ✅
+- `docker compose -f scripts\Docker\docker-compose.yml config` ✅
+
+---
+
+## Cycle 6 — Integration Testing & Quality Gates
+
+### [2026-03-16] QUALITY_GUARDIAN — Unified Quality Gates Pipeline
+
+**PROBLEM:** Existing validation was split across workflows and manual commands; no single quality-gate workflow combined security unit checks, frontend E2E smoke, and baseline performance policy checks.
+
+**DECISION:** Create a dedicated quality-gates workflow with deterministic smoke and performance assertions, while keeping current CI lanes unchanged.
+
+**IMPLEMENTATION:**
+- Added `.github/workflows/ci-quality-gates.yml`:
+  - `security-gate`: JWT security tests + security headers middleware tests
+  - `e2e-smoke`: Cypress action using built frontend and local dist server
+  - `performance-baseline`: PowerShell baseline policy assertion
+- Added `frontend/cypress/e2e/00-smoke.cy.ts` for lightweight route/app-shell health checks.
+- Added npm script in `frontend/package.json`:
+  - `e2e:smoke`
+- Added `scripts/Monitoring/Assert-PerformanceBaseline.ps1`:
+  - validates Cycle 6 target assertions in `docs/PERFORMANCE_BASELINE.md`
+  - writes JSON gate summary for artifact consumption
+
+**PATTERN APPRIS:**
+1. Smoke E2E should validate shell + route resolution only; keep it small and deterministic.
+2. Baseline-policy checks are safer when encoded as explicit assertions with machine-readable output.
+3. Keep quality gates additive; do not destabilize existing build/test workflows when introducing new controls.
+
+**REGRESSION TEST:**
+- `dotnet test Riada.sln --nologo` ✅ (79/79)
+- `dotnet test tests\Riada.UnitTests\Riada.UnitTests.csproj --nologo --filter "FullyQualifiedName~Riada.UnitTests.Security"` ✅
+- `dotnet test tests\Riada.UnitTests\Riada.UnitTests.csproj --nologo --filter "FullyQualifiedName~SecurityHeadersMiddlewareTests"` ✅
+- `pwsh -File scripts\Monitoring\Assert-PerformanceBaseline.ps1` ✅
+- `cd frontend && npm run e2e:smoke -- --config baseUrl=http://localhost:4201` ✅
+
+---
+
+## Cycle 7 — Documentation & Knowledge Sync
+
+### [2026-03-16] EVOLUTION_ENGINE — Documentation Synchronization Across Cycles 4-6
+
+**PROBLEM:** Documentation and memory artifacts were partially fragmented (some Cycle 4 docs remained unstaged, and decision history lacked Cycle 5/6 consolidation).
+
+**DECISION:** Normalize cycle documentation state and synchronize memory/indices so Cycle 8 can run with a clean, traceable knowledge base.
+
+**IMPLEMENTATION:**
+- Consolidated Cycle 4 report artifacts in `agents/` and `agents/memory/`.
+- Appended Cycle 5 and Cycle 6 decisions into this log.
+- Updated documentation index metadata and CI/quality-gate navigation.
+
+**PATTERN APPRIS:**
+1. Close each cycle with both implementation commit(s) and explicit narrative synchronization.
+2. Keep decision logs chronological and actionable so future cycles can execute without re-discovery.
+3. Use docs as operational entry points (workflows/scripts) rather than static architecture text only.
+
+**REGRESSION TEST:**
+- Documentation-only synchronization; no runtime behavior changes introduced.
+
+---

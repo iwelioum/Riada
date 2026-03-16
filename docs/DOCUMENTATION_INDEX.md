@@ -1,8 +1,8 @@
 # 📚 Riada API - Index de Documentation Complet
 
-**Version:** 5.1  
+**Version:** 5.2  
 **Statut:** ✅ Production Ready  
-**Dernière mise à jour:** Décembre 2024
+**Dernière mise à jour:** Mars 2026 (Cycle 7 sync)
 
 ---
 
@@ -21,8 +21,9 @@
 ### 🚀 **Pour les DevOps**
 1. **Lire:** [`AUTOMATION_GUIDE.md`](#automation-guidemd)
 2. **Monitoring:** [`MONITORING_OPERABILITY.md`](#monitoring_operabilitymd)
-3. **Déployer:** `docker-compose up`
-4. **Monitorer:** Accès à `/health` + scripts monitoring cycle 4
+3. **Qualité continue:** Workflow `ci-quality-gates.yml`
+4. **Déployer:** `docker-compose up`
+5. **Monitorer:** Accès à `/health` + scripts monitoring cycle 4
 
 ---
 
@@ -43,7 +44,7 @@
 - **Pour:** Comprendre le projet
 - **Contient:**
   - Description générale
-  - Statut des phases (1-7 complétées)
+  - Statut des cycles multi-agents
   - Fonctionnalités principales
   - Architecture générale
   - Installation MySQL
@@ -98,6 +99,26 @@
   - Artifacts de sortie (`artifacts/monitoring/`)
   - Workflow CI dédié monitoring
 - **→ [Voir le fichier](./MONITORING_OPERABILITY.md)**
+
+### **PERFORMANCE_BASELINE.md** ⚡
+- **Durée:** 3-5 min de lecture
+- **Pour:** Suivre les objectifs performance front/API et les seuils Cycle 6
+- **Contient:**
+  - Baseline FCP/LCP/CLS
+  - Cibles de bundle et mémoire
+  - Opportunités d'optimisation priorisées
+  - Référentiel utilisé par le gate perf CI
+- **→ [Voir le fichier](./PERFORMANCE_BASELINE.md)**
+
+### **SECURITY_PENETRATION_TEST_REPORT.md** 🔐
+- **Durée:** 8-12 min de lecture
+- **Pour:** Visualiser les findings sécurité et la remédiation par cycle
+- **Contient:**
+  - Couverture endpoint et résultats de tests
+  - Classification des risques (Critical/High/Medium/Low)
+  - Correctifs livrés et risques résiduels
+  - Recommandations pour cycles suivants
+- **→ [Voir le fichier](./SECURITY_PENETRATION_TEST_REPORT.md)**
 
 ### **AUTOMATION_MANIFEST.md** 📦
 - **Durée:** 5 min de lecture
