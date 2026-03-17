@@ -35,30 +35,30 @@ export class LayoutComponent implements OnInit {
       title: 'Core',
       items: [
         { path: '/dashboard', label: 'Dashboard', icon: '📊', exact: true },
-        { path: '/members', label: 'Members', icon: '🙋', roles: ['admin', 'billing', 'portique', 'dpo'] },
-        { path: '/statistics', label: 'Statistics', icon: '📈', roles: ['admin', 'billing'] },
-        { path: '/messages', label: 'Messages', icon: '💬', badge: '!' }
+        { path: '/members', label: 'Members', icon: '🙋', roles: ['admin', 'billing', 'portique'] },
+        { path: '/statistics', label: 'Statistics', icon: '📈', roles: ['admin'] },
+        { path: '/messages', label: 'Messages', icon: '💬', badge: '!', roles: ['admin'] }
       ]
     },
     {
       title: 'Operations',
       items: [
-        { path: '/exercises', label: 'Exercises', icon: '🏋️', roles: ['admin'] },
-        { path: '/schedule', label: 'Schedule', icon: '🗓️', roles: ['admin', 'billing', 'portique'] },
+        { path: '/exercises', label: 'Exercises', icon: '🏋️', roles: ['admin', 'coach'] },
+        { path: '/schedule', label: 'Schedule', icon: '🗓️', roles: ['admin', 'coach', 'portique'] },
         { path: '/subscriptions', label: 'Plans', icon: '🧾', roles: ['admin', 'billing'] },
-        { path: '/billing', label: 'Billing', icon: '💳', roles: ['admin', 'billing', 'portique'] },
-        { path: '/employees', label: 'Employees', icon: '🧑‍💼', roles: ['admin', 'billing', 'portique'] },
-        { path: '/equipment', label: 'Equipment', icon: '🛠️', roles: ['admin'] },
+        { path: '/billing', label: 'Billing', icon: '💳', roles: ['admin', 'billing'] },
+        { path: '/employees', label: 'Employees', icon: '🧑‍💼', roles: ['admin', 'manager'] },
+        { path: '/equipment', label: 'Equipment', icon: '🛠️', roles: ['admin', 'manager'] },
         { path: '/access', label: 'Access', icon: '🛂', roles: ['admin', 'portique'] },
         { path: '/guests', label: 'Guests', icon: '🎫', roles: ['admin', 'portique'] },
-        { path: '/workout-tracker', label: 'Workout', icon: '📍' },
-        { path: '/meal-plan', label: 'Meal Plan', icon: '🍽️' }
+        { path: '/workout-tracker', label: 'Workout', icon: '📍', roles: ['admin', 'coach'] },
+        { path: '/meal-plan', label: 'Meal Plan', icon: '🍽️', roles: ['admin', 'coach'] }
       ]
     },
     {
       title: 'Administration',
       items: [
-        { path: '/reports', label: 'Reports', icon: '📑', roles: ['admin', 'billing', 'dpo'] },
+        { path: '/reports', label: 'Reports', icon: '📑', roles: ['admin', 'billing'] },
         { path: '/settings', label: 'Settings', icon: '⚙️', roles: ['admin'] }
       ]
     }
@@ -120,9 +120,19 @@ export class LayoutComponent implements OnInit {
   get currentRoleLabel(): string {
     const roles = this.role.getRoles();
     if (roles.includes('admin')) return 'Admin';
+    if (roles.includes('manager')) return 'Manager';
     if (roles.includes('billing')) return 'Billing';
+    if (roles.includes('coach')) return 'Coach';
     if (roles.includes('portique')) return 'Receptionist';
     if (roles.includes('dpo')) return 'DPO';
     return 'Staff';
+  }
+
+  get canOpenSettings(): boolean {
+    return this.role.hasRole('admin');
+  }
+
+  get canOpenReports(): boolean {
+    return this.role.hasAnyRole(['admin', 'billing']);
   }
 }

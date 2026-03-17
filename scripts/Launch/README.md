@@ -82,7 +82,7 @@ test.bat --no-pause
 - If launch fails with `Microsoft.AspNetCore.App, version 8.0.0 not found`, install ASP.NET Core Runtime 8.x (or SDK 8.x):
   - https://dotnet.microsoft.com/download/dotnet/8.0
 - If backend build fails, run from repo root:
-  - `dotnet restore Riada.sln`
+  - `dotnet restore Riada.sln` (or `dotnet restore src\Riada.API\Riada.API.csproj` if `.sln` is absent)
   - `dotnet build src\Riada.API\Riada.API.csproj`
 - If frontend build fails, run:
   - `cd frontend && npm install && npm run build`

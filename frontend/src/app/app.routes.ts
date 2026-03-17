@@ -70,7 +70,7 @@ export const routes: Routes = [
         path: 'employees',
         loadComponent: () => import('./pages/employees/employees.component').then((m) => m.EmployeesComponent),
         canActivate: [roleGuard],
-        data: { roles: ['admin', 'manager', 'portique'] }
+        data: { roles: ['admin', 'manager'] }
       },
       {
         path: 'messages',
@@ -82,7 +82,7 @@ export const routes: Routes = [
         path: 'billing',
         loadComponent: () => import('./pages/billing/billing.component').then((m) => m.BillingComponent),
         canActivate: [roleGuard],
-        data: { roles: ['admin', 'billing', 'portique'] }
+        data: { roles: ['admin', 'billing'] }
       },
       {
         path: 'equipment',

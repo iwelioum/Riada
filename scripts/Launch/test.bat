@@ -48,12 +48,18 @@ if exist "%~dp0launch.sh" (
   set /a TESTS_FAILED+=1
 )
 
-echo Test 4: Riada.sln exists
+echo Test 4: Restore target exists ^(Riada.sln or API csproj^)
 if exist "%ROOT_DIR%Riada.sln" (
-  echo   PASS
+  echo   PASS - Found %ROOT_DIR%Riada.sln
+  set /a TESTS_PASSED+=1
+) else if exist "%ROOT_DIR%src\Riada.sln" (
+  echo   PASS - Found %ROOT_DIR%src\Riada.sln
+  set /a TESTS_PASSED+=1
+) else if exist "%ROOT_DIR%src\Riada.API\Riada.API.csproj" (
+  echo   PASS - Fallback to %ROOT_DIR%src\Riada.API\Riada.API.csproj
   set /a TESTS_PASSED+=1
 ) else (
-  echo   FAIL
+  echo   FAIL - No .sln and no API csproj fallback
   set /a TESTS_FAILED+=1
 )
 

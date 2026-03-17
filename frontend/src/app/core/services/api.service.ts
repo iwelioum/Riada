@@ -73,6 +73,7 @@ export class ApiService {
       nationality: dto.nationality ?? dto.Nationality,
       mobilePhone: dto.mobilePhone ?? dto.MobilePhone,
       primaryGoal: dto.primaryGoal ?? dto.PrimaryGoal,
+      acquisitionSource: dto.acquisitionSource ?? dto.AcquisitionSource,
       gdprConsentAt: dto.gdprConsentAt ?? dto.GdprConsentAt,
       marketingConsent: dto.marketingConsent ?? dto.MarketingConsent,
       medicalCertificateProvided: dto.medicalCertificateProvided ?? dto.MedicalCertificateProvided ?? false,
@@ -134,6 +135,14 @@ export class ApiService {
       paidAt: dto.paidAt ?? dto.PaidAt ?? '',
       status: dto.status ?? dto.Status ?? ''
     };
+  }
+
+  private toPositiveIntegerOrNull(value: unknown): number | null {
+    const normalized = Number(value);
+    if (!Number.isInteger(normalized) || normalized <= 0) {
+      return null;
+    }
+    return normalized;
   }
 
   private toEquipmentItem(dto: any): EquipmentItem {
@@ -386,7 +395,11 @@ export class ApiService {
     return this.http.post<any>(`${this.apiUrl}/Billing/generate`, {
       contractId: payload.contractId
     }).pipe(
-      map((r) => ({ message: r.message ?? r.Message ?? 'Invoice generated' }))
+      map((r) => ({
+        message: r.message ?? r.Message ?? 'Invoice generated',
+        invoiceId: this.toPositiveIntegerOrNull(r.invoiceId ?? r.InvoiceId ?? r.id ?? r.Id),
+        invoiceNumber: r.invoiceNumber ?? r.InvoiceNumber ?? null
+      }))
     );
   }
 
@@ -635,6 +648,18 @@ export class ApiService {
       qualifications: dto.qualifications ?? dto.Qualifications ?? null,
       createdAt: dto.createdAt ?? dto.CreatedAt ?? ''
     };
+  }
+
+  getAdminSettings(): Observable<Record<string, unknown>> {
+    return this.http.get<Record<string, unknown>>(`${this.apiUrl}/Settings/admin`);
+  }
+
+  saveAdminSettings(payload: Record<string, unknown>): Observable<{ message: string }> {
+    return this.http.put<any>(`${this.apiUrl}/Settings/admin`, payload).pipe(
+      map((response) => ({
+        message: response?.message ?? response?.Message ?? 'Settings saved.'
+      }))
+    );
   }
 
   // Health Check

@@ -24,9 +24,11 @@ $script:Config = @{
     ApiProject  = [System.IO.Path]::GetFullPath((Join-Path $ScriptRoot '..\..\src\Riada.API'))
     ApiCsproj   = [System.IO.Path]::GetFullPath((Join-Path $ScriptRoot '..\..\src\Riada.API\Riada.API.csproj'))
     Solution    = [System.IO.Path]::GetFullPath((Join-Path $ScriptRoot '..\..\Riada.sln'))
+    AlternateSolution = [System.IO.Path]::GetFullPath((Join-Path $ScriptRoot '..\..\src\Riada.sln'))
     UnitTests   = [System.IO.Path]::GetFullPath((Join-Path $ScriptRoot '..\..\tests\Riada.UnitTests\Riada.UnitTests.csproj'))
     FrontendProject = [System.IO.Path]::GetFullPath((Join-Path $ScriptRoot '..\..\frontend'))
     FrontendPackageJson = [System.IO.Path]::GetFullPath((Join-Path $ScriptRoot '..\..\frontend\package.json'))
+    RestoreTarget = $null
     ApiPort     = 7001
     ApiUrl      = 'https://localhost:7001'
     SwaggerUrl  = 'https://localhost:7001/swagger'
@@ -168,6 +170,25 @@ function Get-PortFromUrl {
     }
 }
 
+function Resolve-RestoreTarget {
+    $solutionCandidates = @(
+        $script:Config.Solution,
+        $script:Config.AlternateSolution
+    ) | Select-Object -Unique
+
+    foreach ($candidate in $solutionCandidates) {
+        if (Test-Path -Path $candidate -PathType Leaf) {
+            return $candidate
+        }
+    }
+
+    if (Test-Path -Path $script:Config.ApiCsproj -PathType Leaf) {
+        return $script:Config.ApiCsproj
+    }
+
+    return $null
+}
+
 function Invoke-Validation {
     param(
         [switch]$RequireAspNetRuntime,
@@ -182,12 +203,23 @@ function Invoke-Validation {
     Require-Program 'dotnet'
     Write-Success "dotnet found: $(dotnet --version)"
 
-    Require-File -Path $script:Config.Solution -Message "Solution file not found: $($script:Config.Solution)"
-    Write-Success 'Solution file found'
-
     Require-Directory -Path $script:Config.ApiProject -Message "API project folder not found: $($script:Config.ApiProject)"
     Require-File -Path $script:Config.ApiCsproj -Message "API project file not found: $($script:Config.ApiCsproj)"
     Write-Success 'API project folder found'
+
+    $restoreTarget = Resolve-RestoreTarget
+    if ([string]::IsNullOrWhiteSpace($restoreTarget)) {
+        Write-Error-Log "No restore target found. Checked: $($script:Config.Solution), $($script:Config.AlternateSolution), $($script:Config.ApiCsproj)"
+        exit 1
+    }
+
+    $script:Config.RestoreTarget = $restoreTarget
+    if ($restoreTarget -like '*.sln') {
+        Write-Success "Restore target found (solution): $restoreTarget"
+    }
+    else {
+        Write-Warning-Log "Solution file not found. Falling back to project restore: $restoreTarget"
+    }
 
     if ($RequireFrontendProject) {
         Require-Directory -Path $script:Config.FrontendProject -Message "Frontend folder not found: $($script:Config.FrontendProject)"
@@ -279,9 +311,14 @@ function Invoke-Clean {
 
 function Invoke-Restore {
     Write-Header 'RESTORE'
-    Write-Info 'Running dotnet restore...'
+    if ([string]::IsNullOrWhiteSpace($script:Config.RestoreTarget)) {
+        $script:Config.RestoreTarget = Resolve-RestoreTarget
+    }
 
-    & dotnet restore $script:Config.Solution
+    Require-File -Path $script:Config.RestoreTarget -Message "Restore target not found: $($script:Config.RestoreTarget)"
+    Write-Info "Running dotnet restore $($script:Config.RestoreTarget)..."
+
+    & dotnet restore $script:Config.RestoreTarget
     $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { $LASTEXITCODE }
     if ($exitCode -ne 0) {
         Write-Error-Log "Restore failed (exit code: $exitCode)"

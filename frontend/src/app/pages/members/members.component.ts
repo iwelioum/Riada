@@ -1,12 +1,11 @@
 import { Component, OnInit } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ApiService } from '../../core/services/api.service';
 import { RoleService } from '../../core/services/role.service';
+import { MembersPresenterComponent } from './members-presenter.component';
 import {
   ClubSummary,
   CreateMemberPayload,
@@ -20,7 +19,7 @@ import {
 @Component({
   selector: 'app-members',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [MembersPresenterComponent],
   templateUrl: './members.component.html',
   styleUrl: './members.component.scss'
 })
@@ -43,6 +42,12 @@ export class MembersComponent implements OnInit {
   editingId: number | null = null;
   filters = { status: '', search: '' };
   hasLoadedMembers = false;
+  page = 1;
+  pageSize = 25;
+  totalCount = 0;
+  totalPages = 0;
+  hasNext = false;
+  hasPrevious = false;
 
   formData: CreateMemberPayload = {
     firstName: '',
@@ -56,6 +61,7 @@ export class MembersComponent implements OnInit {
     addressStreet: '',
     addressPostalCode: '',
     primaryGoal: '',
+    acquisitionSource: '',
     marketingConsent: true,
     medicalCertificateProvided: false
   };
@@ -72,10 +78,6 @@ export class MembersComponent implements OnInit {
 
   get canManageContracts(): boolean {
     return this.roleService.hasAnyRole(['admin', 'billing', 'portique']);
-  }
-
-  canMemberEnter(status: string): boolean {
-    return status === 'Active';
   }
 
   ngOnInit() {
@@ -122,6 +124,7 @@ export class MembersComponent implements OnInit {
       return;
     }
 
+    this.page = 1;
     this.loadMembers();
   }
 
@@ -130,23 +133,58 @@ export class MembersComponent implements OnInit {
     this.loading = true;
     this.error = null;
     this.apiService.getMembers({
-      page: 1,
-      pageSize: 50,
+      page: this.page,
+      pageSize: this.pageSize,
       status: this.filters.status || undefined,
       search: this.filters.search.trim() || undefined
     }).subscribe({
       next: (data) => {
         this.members = data.items;
+        this.totalCount = data.totalCount;
+        this.totalPages = data.totalPages;
+        this.hasNext = data.hasNext;
+        this.hasPrevious = data.hasPrevious;
+        this.page = data.page || this.page;
+        this.pageSize = data.pageSize || this.pageSize;
         this.loading = false;
         this.hasLoadedMembers = true;
       },
       error: (err) => {
         this.members = [];
+        this.totalCount = 0;
+        this.totalPages = 0;
+        this.hasNext = false;
+        this.hasPrevious = false;
         this.error = this.getErrorMessage(err, 'Failed to load members. Please check if the API is running.');
         this.loading = false;
         this.hasLoadedMembers = true;
       }
     });
+  }
+
+  changePage(direction: 'previous' | 'next'): void {
+    if (direction === 'previous' && !this.hasPrevious) {
+      return;
+    }
+
+    if (direction === 'next' && !this.hasNext) {
+      return;
+    }
+
+    this.page = direction === 'previous'
+      ? Math.max(1, this.page - 1)
+      : this.page + 1;
+    this.loadMembers();
+  }
+
+  changePageSize(pageSize: number): void {
+    if (!Number.isFinite(pageSize) || pageSize <= 0 || pageSize === this.pageSize) {
+      return;
+    }
+
+    this.pageSize = pageSize;
+    this.page = 1;
+    this.loadMembers();
   }
 
   viewMember(member: MemberSummary): void {
@@ -310,6 +348,7 @@ export class MembersComponent implements OnInit {
       mobilePhone: detail.mobilePhone ?? '',
       nationality: detail.nationality ?? '',
       primaryGoal: detail.primaryGoal ?? '',
+      acquisitionSource: detail.acquisitionSource ?? '',
       marketingConsent: detail.marketingConsent
     };
   }
@@ -332,32 +371,10 @@ export class MembersComponent implements OnInit {
       addressStreet: '',
       addressPostalCode: '',
       primaryGoal: '',
+      acquisitionSource: '',
       marketingConsent: true,
       medicalCertificateProvided: false
     };
-  }
-
-  get membersEmptyMessage(): string {
-    if (this.filters.search.trim() || this.filters.status) {
-      return 'No members match the current filters.';
-    }
-
-    return 'No members found. Add your first member to get started.';
-  }
-
-  getStatusBadgeClass(status: string): string {
-    switch (status) {
-      case 'Active':
-        return 'badge-success';
-      case 'Suspended':
-      case 'Inactive':
-      case 'Pending':
-        return 'badge-warning';
-      case 'Anonymized':
-        return 'badge-danger';
-      default:
-        return 'badge-info';
-    }
   }
 
   private getErrorMessage(error: unknown, fallback: string): string {

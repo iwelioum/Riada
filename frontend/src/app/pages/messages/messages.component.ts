@@ -1,6 +1,11 @@
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { forkJoin, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
+import { MemberSummary, RiskScore } from '../../core/models/api-models';
+import { ApiService } from '../../core/services/api.service';
 
 type ThreadStatus = 'Unread' | 'Follow-up' | 'Resolved';
 type ThreadChannel = 'Email' | 'SMS' | 'In-app';
@@ -90,6 +95,8 @@ export class MessagesComponent implements OnInit, OnDestroy {
   private loadRequestId = 0;
   private noticeTimerId: number | null = null;
 
+  constructor(private api: ApiService) {}
+
   ngOnInit(): void {
     this.loadThreads();
   }
@@ -104,31 +111,61 @@ export class MessagesComponent implements OnInit, OnDestroy {
     const requestId = ++this.loadRequestId;
     const selectedBeforeReload = this.selectedThreadId;
     const draftsBeforeReload = { ...this.draftByThreadId };
+    const issues: string[] = [];
 
     this.loading = !isRefresh && this.threads.length === 0;
     this.refreshing = isRefresh;
     this.loadError = null;
     this.actionError = null;
 
-    window.setTimeout(() => {
-      if (requestId !== this.loadRequestId) {
-        return;
-      }
+    forkJoin({
+      risks: this.api.getRiskScores(20).pipe(
+        catchError((error) => {
+          issues.push(`Risk signals: ${this.getErrorMessage(error, 'unavailable')}`);
+          return of([] as RiskScore[]);
+        })
+      ),
+      members: this.api.getMembers({ page: 1, pageSize: 60 }).pipe(
+        map((response) => response.items ?? []),
+        catchError((error) => {
+          issues.push(`Members: ${this.getErrorMessage(error, 'unavailable')}`);
+          return of([] as MemberSummary[]);
+        })
+      )
+    }).subscribe({
+      next: ({ risks, members }) => {
+        if (requestId !== this.loadRequestId) {
+          return;
+        }
 
-      try {
-        this.threads = this.mergeThreadState(this.buildSeedThreads());
+        this.threads = this.mergeThreadState(this.buildThreadsFromApi(risks, members));
         this.selectedThreadId = this.resolveSelectedThreadId(selectedBeforeReload, this.threads);
         this.draftByThreadId = draftsBeforeReload;
         this.replyDraft = this.selectedThreadId ? this.draftByThreadId[this.selectedThreadId] ?? '' : '';
         this.lastLoadedAt = new Date().toISOString();
-      } catch (error) {
-        console.error('Unable to load inbox', error);
-        this.loadError = 'Failed to load inbox data. Please retry.';
-      } finally {
+
+        if (!this.threads.length && issues.length > 0) {
+          this.loadError = `Inbox unavailable: ${issues.join(' ')}`;
+        } else if (!this.threads.length) {
+          this.loadError = 'No active conversations detected from current operational signals.';
+        } else if (issues.length > 0) {
+          this.loadError = `Inbox partially loaded: ${issues.join(' ')}`;
+        }
+      },
+      error: (error) => {
+        if (requestId !== this.loadRequestId) {
+          return;
+        }
+        this.loadError = this.getErrorMessage(error, 'Failed to load inbox data. Please retry.');
+      },
+      complete: () => {
+        if (requestId !== this.loadRequestId) {
+          return;
+        }
         this.loading = false;
         this.refreshing = false;
       }
-    }, 420);
+    });
   }
 
   clearFilters(): void {
@@ -197,36 +234,33 @@ export class MessagesComponent implements OnInit, OnDestroy {
     this.isSending = true;
     this.actionError = null;
     const threadId = thread.id;
-
-    window.setTimeout(() => {
-      const activeThread = this.threads.find((item) => item.id === threadId);
-      if (!activeThread) {
-        this.isSending = false;
-        return;
-      }
-
-      const now = new Date().toISOString();
-      activeThread.conversation = [
-        ...activeThread.conversation,
-        {
-          direction: 'outgoing',
-          content,
-          createdAt: now
-        }
-      ];
-      activeThread.lastActivityAt = now;
-      activeThread.unreadCount = 0;
-      activeThread.status = 'Follow-up';
-      activeThread.followUpAt = null;
-
-      this.draftByThreadId[threadId] = '';
-      if (this.selectedThreadId === threadId) {
-        this.replyDraft = '';
-      }
-      this.selectedTemplateId = '';
+    const activeThread = this.threads.find((item) => item.id === threadId);
+    if (!activeThread) {
       this.isSending = false;
-      this.setActionNotice(`Reply sent to ${activeThread.memberName}.`);
-    }, 620);
+      return;
+    }
+
+    const now = new Date().toISOString();
+    activeThread.conversation = [
+      ...activeThread.conversation,
+      {
+        direction: 'outgoing',
+        content,
+        createdAt: now
+      }
+    ];
+    activeThread.lastActivityAt = now;
+    activeThread.unreadCount = 0;
+    activeThread.status = 'Follow-up';
+    activeThread.followUpAt = null;
+
+    this.draftByThreadId[threadId] = '';
+    if (this.selectedThreadId === threadId) {
+      this.replyDraft = '';
+    }
+    this.selectedTemplateId = '';
+    this.isSending = false;
+    this.setActionNotice(`Reply sent to ${activeThread.memberName}.`);
   }
 
   markThreadResolved(): void {
@@ -495,128 +529,186 @@ export class MessagesComponent implements OnInit, OnDestroy {
     return new Date(thread.followUpAt).getTime() <= Date.now() ? 0 : 1;
   }
 
-  private buildSeedThreads(): MessageThread[] {
-    return [
-      {
-        id: 1,
-        memberId: 2481,
-        memberName: 'Alex Carey',
-        subject: 'Need to reschedule Thursday PT session',
-        channel: 'SMS',
-        status: 'Unread',
-        priority: 'Medium',
-        assignee: 'Front Desk',
-        unreadCount: 2,
-        tags: ['Scheduling', 'PT'],
-        lastActivityAt: this.minutesAgo(12),
-        followUpAt: null,
-        conversation: [
-          {
-            direction: 'incoming',
-            content: 'Hi team, I cannot come at 19:30 tonight. Can we move the session to tomorrow?',
-            createdAt: this.minutesAgo(12)
-          },
-          {
-            direction: 'incoming',
-            content: 'If tomorrow is full, Saturday morning works too.',
-            createdAt: this.minutesAgo(8)
-          }
-        ]
-      },
-      {
-        id: 2,
-        memberId: 1752,
-        memberName: 'Cameron Williamson',
-        subject: 'Invoice 2451 appears duplicated',
-        channel: 'Email',
-        status: 'Follow-up',
-        priority: 'High',
-        assignee: 'Billing Desk',
-        unreadCount: 0,
-        tags: ['Billing', 'Urgent'],
-        lastActivityAt: this.minutesAgo(39),
-        followUpAt: this.minutesFromNow(90),
-        conversation: [
-          {
-            direction: 'incoming',
-            content: 'I was charged twice for the monthly renewal. Can someone check invoice 2451?',
-            createdAt: this.minutesAgo(105)
-          },
-          {
-            direction: 'outgoing',
-            content: 'Thanks Cameron, billing is reviewing this and will reply today.',
-            createdAt: this.minutesAgo(92)
-          },
-          {
-            direction: 'incoming',
-            content: 'Great, thank you. I need confirmation before end of day.',
-            createdAt: this.minutesAgo(39)
-          }
-        ]
-      },
-      {
-        id: 3,
-        memberId: 3925,
-        memberName: 'Kalendra Wingman',
-        subject: 'Low attendance check-in',
-        channel: 'In-app',
-        status: 'Follow-up',
-        priority: 'Medium',
-        assignee: 'Coach Team',
-        unreadCount: 1,
-        tags: ['Retention'],
-        lastActivityAt: this.minutesAgo(165),
-        followUpAt: this.minutesAgo(25),
-        conversation: [
-          {
-            direction: 'system',
-            content: 'Retention signal created from churn score report (score: 81).',
-            createdAt: this.minutesAgo(205)
-          },
-          {
-            direction: 'outgoing',
-            content: 'Hi Kalendra, we prepared a lighter schedule for this week. Want us to share it?',
-            createdAt: this.minutesAgo(188)
-          },
-          {
-            direction: 'incoming',
-            content: 'Yes please. I can train only 2x this week.',
-            createdAt: this.minutesAgo(165)
-          }
-        ]
-      },
-      {
-        id: 4,
-        memberId: 4102,
-        memberName: 'Rina Patel',
-        subject: 'Guest pass approved',
-        channel: 'Email',
-        status: 'Resolved',
-        priority: 'Low',
-        assignee: 'Operations Desk',
-        unreadCount: 0,
-        tags: ['Guests'],
-        lastActivityAt: this.minutesAgo(410),
-        followUpAt: null,
-        conversation: [
-          {
-            direction: 'incoming',
-            content: 'Can I bring my sister for Saturday yoga?',
-            createdAt: this.minutesAgo(530)
-          },
-          {
-            direction: 'outgoing',
-            content: 'Approved. Please provide her full name at check-in.',
-            createdAt: this.minutesAgo(518)
-          },
-          {
-            direction: 'system',
-            content: 'Thread automatically closed after successful confirmation.',
-            createdAt: this.minutesAgo(410)
-          }
-        ]
+  private buildThreadsFromApi(risks: RiskScore[], members: MemberSummary[]): MessageThread[] {
+    const threads: MessageThread[] = [];
+    const knownMemberIds = new Set<number>();
+
+    risks.forEach((risk, index) => {
+      const memberId = Number(risk.memberId ?? 0);
+      if (!Number.isFinite(memberId) || memberId <= 0 || knownMemberIds.has(memberId)) {
+        return;
       }
-    ];
+
+      const score = this.normalizeRiskScore(risk);
+      const overdueInvoices = Math.max(0, Number(risk.overdueInvoiceCount ?? 0));
+      const priority = this.resolvePriority(score, overdueInvoices);
+      const followUpAt = this.resolveFollowUpAt(priority, overdueInvoices);
+      const memberName = (risk.memberName ?? '').trim() || `Member #${memberId}`;
+      const subject = overdueInvoices > 0
+        ? `${overdueInvoices} overdue invoice(s) require follow-up`
+        : `Retention signal detected (score ${score})`;
+      const assignee = overdueInvoices > 0 ? 'Billing Desk' : 'Coach Team';
+      const tags = overdueInvoices > 0 ? ['Billing', 'Retention'] : ['Retention'];
+
+      threads.push({
+        id: this.toRiskThreadId(memberId),
+        memberId,
+        memberName,
+        subject,
+        channel: overdueInvoices > 0 ? 'Email' : 'In-app',
+        status: score >= 80 ? 'Unread' : 'Follow-up',
+        priority,
+        assignee,
+        unreadCount: score >= 80 ? 1 : 0,
+        tags,
+        lastActivityAt: this.minutesAgo(6 + index * 4),
+        followUpAt,
+        conversation: [
+          {
+            direction: 'system',
+            content: overdueInvoices > 0
+              ? `System flagged ${overdueInvoices} overdue invoice(s). Immediate billing action required.`
+              : `System generated a retention alert with score ${score}.`,
+            createdAt: this.minutesAgo(8 + index * 4)
+          }
+        ]
+      });
+
+      knownMemberIds.add(memberId);
+    });
+
+    members
+      .filter((member) => ['Suspended', 'Inactive', 'Pending'].includes(member.status))
+      .slice(0, 20)
+      .forEach((member, index) => {
+        if (knownMemberIds.has(member.id)) {
+          return;
+        }
+
+        const memberName = `${member.firstName} ${member.lastName}`.trim() || `Member #${member.id}`;
+        const status = member.status || 'Pending';
+        const subject = this.resolveStatusSubject(status);
+        const priority: ThreadPriority = status === 'Suspended' ? 'High' : 'Medium';
+
+        threads.push({
+          id: this.toStatusThreadId(member.id),
+          memberId: member.id,
+          memberName,
+          subject,
+          channel: 'In-app',
+          status: 'Follow-up',
+          priority,
+          assignee: 'Front Desk',
+          unreadCount: 0,
+          tags: ['Membership', status],
+          lastActivityAt: member.lastVisitDate ?? this.minutesAgo(90 + index * 9),
+          followUpAt: this.resolveFollowUpAt(priority, 0),
+          conversation: [
+            {
+              direction: 'system',
+              content: `Member currently marked as ${status}. Front desk should review account details and next actions.`,
+              createdAt: this.minutesAgo(95 + index * 9)
+            }
+          ]
+        });
+
+        knownMemberIds.add(member.id);
+      });
+
+    return threads
+      .sort((left, right) => {
+        const byPriority = this.priorityRank(left.priority) - this.priorityRank(right.priority);
+        if (byPriority !== 0) {
+          return byPriority;
+        }
+        return new Date(right.lastActivityAt).getTime() - new Date(left.lastActivityAt).getTime();
+      })
+      .slice(0, 40);
+  }
+
+  private normalizeRiskScore(risk: RiskScore): number {
+    const score = Number(risk.score ?? risk.riskScore ?? 0);
+    if (!Number.isFinite(score)) {
+      return 0;
+    }
+    return Math.max(0, Math.round(score));
+  }
+
+  private resolvePriority(score: number, overdueInvoices: number): ThreadPriority {
+    if (overdueInvoices > 0 || score >= 80) {
+      return 'High';
+    }
+    if (score >= 65) {
+      return 'Medium';
+    }
+    return 'Low';
+  }
+
+  private resolveFollowUpAt(priority: ThreadPriority, overdueInvoices: number): string | null {
+    if (overdueInvoices > 0 || priority === 'High') {
+      return this.minutesFromNow(240);
+    }
+    if (priority === 'Medium') {
+      return this.minutesFromNow(720);
+    }
+    return null;
+  }
+
+  private resolveStatusSubject(status: string): string {
+    switch (status) {
+      case 'Suspended':
+        return 'Membership suspended: review payment and access status';
+      case 'Inactive':
+        return 'Inactive member follow-up recommended';
+      case 'Pending':
+        return 'Pending profile requires onboarding follow-up';
+      default:
+        return 'Member status requires follow-up';
+    }
+  }
+
+  private priorityRank(priority: ThreadPriority): number {
+    switch (priority) {
+      case 'High':
+        return 0;
+      case 'Medium':
+        return 1;
+      case 'Low':
+      default:
+        return 2;
+    }
+  }
+
+  private toRiskThreadId(memberId: number): number {
+    return 100000 + memberId;
+  }
+
+  private toStatusThreadId(memberId: number): number {
+    return 200000 + memberId;
+  }
+
+  private getErrorMessage(error: unknown, fallback: string): string {
+    if (error instanceof HttpErrorResponse) {
+      if (error.status === 401) {
+        return 'authentication required';
+      }
+      if (error.status === 403) {
+        return 'access denied for your role';
+      }
+      if (error.status === 404) {
+        return 'endpoint not found';
+      }
+      if (error.status === 0) {
+        return 'API unreachable';
+      }
+
+      const apiMessage = error.error?.message ?? error.error?.Message;
+      if (typeof apiMessage === 'string' && apiMessage.trim().length > 0) {
+        return apiMessage;
+      }
+    }
+
+    return fallback;
   }
 
   private minutesAgo(minutes: number): string {

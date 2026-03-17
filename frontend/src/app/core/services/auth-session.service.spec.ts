@@ -11,10 +11,11 @@ describe('AuthSessionService', () => {
     localStorage.clear();
   });
 
-  it('does not expose access tokens to JavaScript storage', () => {
+  it('stores access token in sessionStorage and keeps localStorage free of token values', () => {
     service.setAccessToken('jwt-token-value');
 
-    expect(service.getAccessToken()).toBeNull();
+    expect(service.getAccessToken()).toBe('jwt-token-value');
+    expect(sessionStorage.getItem('riada.auth.accessToken')).toBe('jwt-token-value');
     expect(localStorage.getItem('riada.auth.accessToken')).toBeNull();
   });
 

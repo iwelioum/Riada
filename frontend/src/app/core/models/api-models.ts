@@ -43,6 +43,7 @@ export interface MemberDetail extends MemberSummary {
   nationality: string;
   mobilePhone?: string | null;
   primaryGoal?: string | null;
+  acquisitionSource?: string | null;
   gdprConsentAt: string;
   marketingConsent: boolean;
   medicalCertificateProvided?: boolean;
@@ -185,6 +186,8 @@ export interface GenerateInvoicePayload {
 
 export interface GenerateInvoiceResponse {
   message: string;
+  invoiceId?: number | null;
+  invoiceNumber?: string | null;
 }
 
 // Equipment

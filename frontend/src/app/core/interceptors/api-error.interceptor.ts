@@ -1,8 +1,6 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
-import { AuthSessionService } from '../services/auth-session.service';
 import { NotificationService } from '../services/notification.service';
 
 const GENERIC_SERVER_ERROR = 'an unexpected error occurred.';
@@ -55,8 +53,6 @@ function normalizeApiError(error: HttpErrorResponse): HttpErrorResponse {
 }
 
 export const apiErrorInterceptor: HttpInterceptorFn = (request, next) => {
-  const session = inject(AuthSessionService);
-  const router = inject(Router);
   const notification = inject(NotificationService);
 
   return next(request).pipe(
@@ -67,14 +63,8 @@ export const apiErrorInterceptor: HttpInterceptorFn = (request, next) => {
                             normalizedError.error?.message || 
                             `Error: ${normalizedError.status} ${normalizedError.statusText}`;
 
-        // Handle specific status codes
-        if (normalizedError.status === 401) {
-          session.clearAccessToken();
-          if (!request.url.includes('/Auth/')) {
-            notification.error('Session expired. Please login again.');
-            router.navigate(['/login']);
-          }
-        } else if (normalizedError.status === 403) {
+        // 401 is handled by authInterceptor (refresh or logout flow).
+        if (normalizedError.status === 403) {
           notification.error('You do not have permission to perform this action.');
         } else if (normalizedError.status === 404) {
           notification.error('Resource not found.');

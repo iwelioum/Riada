@@ -243,3 +243,73 @@
   color: #334155;
   margin: 0;
 }
+
+.mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.mode-btn {
+  border: 1px solid #2b3247;
+  background: #161b2a;
+  color: #94a3b8;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+
+  &.active {
+    border-color: #6c63ff;
+    color: #e2e8f0;
+    background: rgba(108, 99, 255, 0.14);
+  }
+}
+
+.manual-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+
+  label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #94a3b8;
+  }
+
+  input {
+    border: 1px solid #2b3247;
+    background: #161b2a;
+    color: #e2e8f0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+    outline: none;
+
+    &:focus {
+      border-color: #6c63ff;
+      box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.15);
+    }
+  }
+}
+
+.manual-submit {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #6c63ff;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}

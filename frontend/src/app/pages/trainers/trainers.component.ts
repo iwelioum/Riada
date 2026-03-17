@@ -4,7 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { EmployeeSummary } from '../../core/models/api-models';
 
-type TrainerAvailability = 'Available Today' | 'Limited Slots' | 'Fully Booked';
 type TrainerPageState = 'loading' | 'ready' | 'empty' | 'error';
 type TrainerEmptyReason = 'filters' | 'no-data';
 
@@ -13,11 +12,8 @@ interface TrainerProfile {
   name: string;
   specialty: string;
   focusAreas: string[];
-  rating: number;
   yearsExperience: number;
-  activeClients: number;
-  availability: TrainerAvailability;
-  nextSlot: string;
+  hiredOn: string;
 }
 
 interface TrainerCardViewModel {
@@ -26,12 +22,9 @@ interface TrainerCardViewModel {
   initials: string;
   specialty: string;
   focusAreas: string[];
-  rating: number;
   yearsExperience: number;
-  activeClients: number;
-  availability: TrainerAvailability;
-  availabilityClass: string;
-  nextSlotLabel: string;
+  hiredOnLabel: string;
+  assignmentLabel: string;
   bookingLabel: string;
   bookingTone: 'solid' | 'ghost';
 }
@@ -48,7 +41,6 @@ export class TrainersComponent implements OnInit {
 
   searchTerm = '';
   selectedSpecialty = 'All';
-  onlyAvailable = false;
 
   state: TrainerPageState = 'loading';
   emptyReason: TrainerEmptyReason = 'no-data';
@@ -73,7 +65,7 @@ export class TrainersComponent implements OnInit {
   }
 
   get hasActiveFilters(): boolean {
-    return this.searchTerm.trim().length > 0 || this.selectedSpecialty !== 'All' || this.onlyAvailable;
+    return this.searchTerm.trim().length > 0 || this.selectedSpecialty !== 'All';
   }
 
   get canSyncBackend(): boolean {
@@ -137,8 +129,7 @@ export class TrainersComponent implements OnInit {
         trainer.focusAreas.some((focus) => focus.toLowerCase().includes(term));
       const matchesSpecialty =
         this.selectedSpecialty === 'All' || trainer.specialty === this.selectedSpecialty;
-      const matchesAvailability = !this.onlyAvailable || trainer.availability !== 'Fully Booked';
-      return matchesSearch && matchesSpecialty && matchesAvailability;
+      return matchesSearch && matchesSpecialty;
     });
 
     this.refreshTrainerCards();
@@ -155,7 +146,6 @@ export class TrainersComponent implements OnInit {
   clearFilters(): void {
     this.searchTerm = '';
     this.selectedSpecialty = 'All';
-    this.onlyAvailable = false;
     this.applyFilters();
   }
 
@@ -181,11 +171,8 @@ export class TrainersComponent implements OnInit {
       name: `${e.firstName} ${e.lastName}`,
       specialty: e.role,
       focusAreas: [e.clubName],
-      rating: 4.5,
       yearsExperience,
-      activeClients: 0,
-      availability: 'Available Today',
-      nextSlot: 'Contact desk'
+      hiredOn: e.hiredOn
     };
   }
 
@@ -197,23 +184,20 @@ export class TrainersComponent implements OnInit {
       initials: trainer.name.split(' ').filter(p => p.length).map(p => p[0].toUpperCase()).slice(0, 2).join(''),
       specialty: trainer.specialty,
       focusAreas: [...trainer.focusAreas],
-      rating: trainer.rating,
       yearsExperience: trainer.yearsExperience,
-      activeClients: trainer.activeClients,
-      availability: trainer.availability,
-      availabilityClass: this.toAvailabilityClass(trainer.availability),
-      nextSlotLabel: `Next slot: ${trainer.nextSlot}`,
+      hiredOnLabel: this.toHiredOnLabel(trainer.hiredOn),
+      assignmentLabel: 'Assignments managed in schedule module',
       bookingLabel: booked ? 'Intro booked' : 'Book intro',
       bookingTone: booked ? 'solid' : 'ghost'
     };
   }
 
-  private toAvailabilityClass(availability: TrainerAvailability): string {
-    switch (availability) {
-      case 'Available Today': return 'availability-open';
-      case 'Limited Slots': return 'availability-limited';
-      case 'Fully Booked': return 'availability-booked';
-      default: return 'availability-limited';
+  private toHiredOnLabel(hiredOn: string): string {
+    const parsed = new Date(hiredOn);
+    if (Number.isNaN(parsed.getTime())) {
+      return 'Hire date unavailable';
     }
+
+    return `Joined ${parsed.toLocaleDateString()}`;
   }
 }

@@ -20,11 +20,13 @@ API_PROJECT="$PROJECT_ROOT/src/Riada.API"
 API_CSPROJ="$API_PROJECT/Riada.API.csproj"
 FRONTEND_PROJECT="$PROJECT_ROOT/frontend"
 SOLUTION="$PROJECT_ROOT/Riada.sln"
+ALTERNATE_SOLUTION="$PROJECT_ROOT/src/Riada.sln"
 UNIT_TESTS="$PROJECT_ROOT/tests/Riada.UnitTests/Riada.UnitTests.csproj"
 HEALTH_URL="https://localhost:5275/health"
 SWAGGER_URL="https://localhost:5275/swagger"
 API_URL="https://localhost:5275"
 FRONTEND_URL="http://localhost:5173"
+RESTORE_TARGET=""
 
 COMMAND="${1:-run}"
 
@@ -63,6 +65,25 @@ COMMANDS:
 EOF
 }
 
+resolve_restore_target() {
+  local candidates=("$SOLUTION" "$ALTERNATE_SOLUTION")
+  local candidate
+
+  for candidate in "${candidates[@]}"; do
+    if [[ -f "$candidate" ]]; then
+      echo "$candidate"
+      return 0
+    fi
+  done
+
+  if [[ -f "$API_CSPROJ" ]]; then
+    echo "$API_CSPROJ"
+    return 0
+  fi
+
+  return 1
+}
+
 validate_backend() {
   header "VALIDATION"
   if ! command -v dotnet >/dev/null 2>&1; then
@@ -71,11 +92,16 @@ validate_backend() {
   fi
   log_success "dotnet found: $(dotnet --version)"
 
-  if [[ ! -f "$SOLUTION" ]]; then
-    log_error "Solution file not found: $SOLUTION"
+  RESTORE_TARGET="$(resolve_restore_target || true)"
+  if [[ -z "$RESTORE_TARGET" ]]; then
+    log_error "No restore target found. Checked: $SOLUTION, $ALTERNATE_SOLUTION, $API_CSPROJ"
     exit 1
   fi
-  log_success "Solution file found"
+  if [[ "$RESTORE_TARGET" == *.sln ]]; then
+    log_success "Restore target found (solution): $RESTORE_TARGET"
+  else
+    log_warn "Solution file not found. Falling back to project restore: $RESTORE_TARGET"
+  fi
 
   if [[ ! -d "$API_PROJECT" ]]; then
     log_error "API project directory not found: $API_PROJECT"
@@ -120,8 +146,16 @@ clean() {
 
 restore() {
   header "RESTORE"
-  log_info "Running dotnet restore..."
-  dotnet restore "$SOLUTION"
+  if [[ -z "$RESTORE_TARGET" ]]; then
+    RESTORE_TARGET="$(resolve_restore_target || true)"
+  fi
+  if [[ -z "$RESTORE_TARGET" ]]; then
+    log_error "No restore target found. Checked: $SOLUTION, $ALTERNATE_SOLUTION, $API_CSPROJ"
+    exit 1
+  fi
+
+  log_info "Running dotnet restore $RESTORE_TARGET..."
+  dotnet restore "$RESTORE_TARGET"
   log_success "Restore successful"
 }
 

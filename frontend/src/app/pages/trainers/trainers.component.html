@@ -29,11 +29,6 @@
       </select>
     </label>
 
-    <label class="toggle-control">
-      <input type="checkbox" [(ngModel)]="onlyAvailable" (ngModelChange)="applyFilters()" />
-      <span>Show only available trainers</span>
-    </label>
-
     <div class="control control-actions">
       <span class="text-muted">Booked intros: {{ bookedCount }}</span>
       <button class="pill ghost" (click)="clearFilters()" [disabled]="!hasActiveFilters">Reset filters</button>
@@ -90,14 +85,11 @@
           <span class="pill muted" *ngFor="let focus of trainer.focusAreas">{{ focus }}</span>
         </div>
         <div class="meta text-muted">
-          ⭐ {{ trainer.rating }} · {{ trainer.yearsExperience }} yrs · {{ trainer.activeClients }} active clients
+          {{ trainer.yearsExperience }} yrs experience · {{ trainer.hiredOnLabel }}
         </div>
       </div>
       <div class="actions">
-        <span class="availability" [ngClass]="trainer.availabilityClass">
-          {{ trainer.availability }}
-        </span>
-        <span class="text-muted next-slot">{{ trainer.nextSlotLabel }}</span>
+        <span class="text-muted next-slot">{{ trainer.assignmentLabel }}</span>
         <button class="pill" [ngClass]="trainer.bookingTone" (click)="bookTrainer(trainer.id)">
           {{ trainer.bookingLabel }}
         </button>

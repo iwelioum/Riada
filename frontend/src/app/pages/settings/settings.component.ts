@@ -1,4 +1,5 @@
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { forkJoin, of } from 'rxjs';
@@ -139,6 +140,7 @@ export class SettingsComponent implements OnInit {
     this.auditNotice = null;
 
     const failedSources: string[] = [];
+    let settingsEndpointUnavailable = false;
 
     forkJoin({
       clubs: this.api.listClubs().pipe(
@@ -161,6 +163,18 @@ export class SettingsComponent implements OnInit {
           failedSources.push('system health');
           return of(null);
         })
+      ),
+      settings: this.api.getAdminSettings().pipe(
+        catchError((err) => {
+          if (this.isEndpointUnavailable(err)) {
+            settingsEndpointUnavailable = true;
+            return of(null);
+          }
+
+          console.error('Failed to load settings snapshot', err);
+          failedSources.push('settings');
+          return of(null);
+        })
       )
     })
       .pipe(
@@ -171,7 +185,7 @@ export class SettingsComponent implements OnInit {
           this.loadingReferences = false;
         })
       )
-      .subscribe(({ clubs, plans, health }) => {
+      .subscribe(({ clubs, plans, health, settings }) => {
         if (requestId !== this.loadRequestId) {
           return;
         }
@@ -179,13 +193,14 @@ export class SettingsComponent implements OnInit {
         this.clubs = clubs ?? [];
         this.plans = plans ?? [];
         this.health = health;
+        const remoteSettings = this.normalizeSettingsPayload(settings);
 
         if (keepDraft) {
           this.form = this.reconcileFormWithReferences(this.form);
           this.savedSnapshot = this.reconcileFormWithReferences(this.savedSnapshot);
           this.saveNotice = 'Reference data reloaded. Unsaved draft preserved.';
         } else {
-          const persisted = this.loadPersistedSettings();
+          const persisted = remoteSettings ?? this.loadPersistedSettings();
           const baseline = persisted ? this.reconcileFormWithReferences(persisted) : this.createRecommendedForm();
           this.form = this.cloneForm(baseline);
           this.savedSnapshot = this.cloneForm(baseline);
@@ -193,8 +208,16 @@ export class SettingsComponent implements OnInit {
 
         this.formIssues = this.collectFormIssues();
 
+        const warnings: string[] = [];
         if (failedSources.length) {
-          this.loadWarning = `Reference data partially loaded: ${failedSources.join(', ')} unavailable.`;
+          warnings.push(`Reference data partially loaded: ${failedSources.join(', ')} unavailable.`);
+        }
+        if (settingsEndpointUnavailable) {
+          warnings.push('Settings API endpoint unavailable, local fallback enabled.');
+        }
+
+        if (warnings.length) {
+          this.loadWarning = warnings.join(' ');
         }
       });
   }
@@ -261,15 +284,47 @@ export class SettingsComponent implements OnInit {
 
     const requestId = ++this.saveRequestId;
     this.saving = true;
-    this.persistSettings(this.form);
-    if (requestId !== this.saveRequestId) {
-      return;
-    }
+    const snapshot = this.cloneForm(this.form);
 
-    this.savedSnapshot = this.cloneForm(this.form);
-    this.saving = false;
-    this.lastSavedAt = new Date().toISOString();
-    this.saveNotice = `Settings saved locally at ${new Date().toLocaleTimeString()}.`;
+    this.api.saveAdminSettings(this.toSettingsRecord(snapshot))
+      .pipe(
+        finalize(() => {
+          if (requestId !== this.saveRequestId) {
+            return;
+          }
+          this.saving = false;
+        })
+      )
+      .subscribe({
+        next: () => {
+          if (requestId !== this.saveRequestId) {
+            return;
+          }
+
+          this.persistSettings(snapshot);
+          this.savedSnapshot = this.cloneForm(snapshot);
+          this.lastSavedAt = new Date().toISOString();
+          this.loadWarning = null;
+          this.saveNotice = `Settings saved to server at ${new Date().toLocaleTimeString()}.`;
+        },
+        error: (error) => {
+          if (requestId !== this.saveRequestId) {
+            return;
+          }
+
+          if (this.isEndpointUnavailable(error)) {
+            this.persistSettings(snapshot);
+            this.savedSnapshot = this.cloneForm(snapshot);
+            this.lastSavedAt = new Date().toISOString();
+            this.formError = null;
+            this.loadWarning = 'Settings API endpoint unavailable, using local fallback.';
+            this.saveNotice = `Settings saved locally at ${new Date().toLocaleTimeString()}.`;
+            return;
+          }
+
+          this.formError = this.getErrorMessage(error, 'Failed to save settings. Please retry.');
+        }
+      });
   }
 
   get hasUnsavedChanges(): boolean {
@@ -392,6 +447,67 @@ export class SettingsComponent implements OnInit {
     return { ...form };
   }
 
+  private toSettingsRecord(form: AdminSettingsForm): Record<string, unknown> {
+    return {
+      defaultClubId: form.defaultClubId,
+      defaultPlanId: form.defaultPlanId,
+      planningWindowDays: form.planningWindowDays,
+      maxGuestPassesPerMember: form.maxGuestPassesPerMember,
+      churnAlertThreshold: form.churnAlertThreshold,
+      dailyDigestEnabled: form.dailyDigestEnabled,
+      digestHour: form.digestHour,
+      autoInvoiceGeneration: form.autoInvoiceGeneration,
+      autoEscalateMessages: form.autoEscalateMessages,
+      maintenanceLeadDays: form.maintenanceLeadDays
+    };
+  }
+
+  private normalizeSettingsPayload(payload: unknown): AdminSettingsForm | null {
+    if (!payload || typeof payload !== 'object') {
+      return null;
+    }
+
+    const value = payload as Partial<AdminSettingsForm>;
+    if (typeof value.planningWindowDays !== 'number') {
+      return null;
+    }
+
+    return {
+      defaultClubId: typeof value.defaultClubId === 'number' ? value.defaultClubId : null,
+      defaultPlanId: typeof value.defaultPlanId === 'number' ? value.defaultPlanId : null,
+      planningWindowDays: value.planningWindowDays,
+      maxGuestPassesPerMember: typeof value.maxGuestPassesPerMember === 'number' ? value.maxGuestPassesPerMember : 2,
+      churnAlertThreshold: typeof value.churnAlertThreshold === 'number' ? value.churnAlertThreshold : 72,
+      dailyDigestEnabled: value.dailyDigestEnabled !== false,
+      digestHour: typeof value.digestHour === 'string' ? value.digestHour : '08:00',
+      autoInvoiceGeneration: value.autoInvoiceGeneration === true,
+      autoEscalateMessages: value.autoEscalateMessages === true,
+      maintenanceLeadDays: typeof value.maintenanceLeadDays === 'number' ? value.maintenanceLeadDays : 10
+    };
+  }
+
+  private isEndpointUnavailable(error: unknown): boolean {
+    return error instanceof HttpErrorResponse && [404, 405, 501].includes(error.status);
+  }
+
+  private getErrorMessage(error: unknown, fallback: string): string {
+    if (error instanceof HttpErrorResponse) {
+      if (error.status === 401) {
+        return 'Session expired. Sign in again before saving settings.';
+      }
+      if (error.status === 403) {
+        return 'Your role does not allow changing settings.';
+      }
+
+      const apiMessage = error.error?.message ?? error.error?.Message;
+      if (typeof apiMessage === 'string' && apiMessage.trim().length > 0) {
+        return apiMessage;
+      }
+    }
+
+    return fallback;
+  }
+
   private loadPersistedSettings(): AdminSettingsForm | null {
     const raw = localStorage.getItem(this.storageKey);
     if (!raw) {
@@ -400,27 +516,7 @@ export class SettingsComponent implements OnInit {
 
     try {
       const parsed: unknown = JSON.parse(raw);
-      if (!parsed || typeof parsed !== 'object') {
-        return null;
-      }
-
-      const value = parsed as Partial<AdminSettingsForm>;
-      if (typeof value.planningWindowDays !== 'number') {
-        return null;
-      }
-
-      return {
-        defaultClubId: typeof value.defaultClubId === 'number' ? value.defaultClubId : null,
-        defaultPlanId: typeof value.defaultPlanId === 'number' ? value.defaultPlanId : null,
-        planningWindowDays: value.planningWindowDays,
-        maxGuestPassesPerMember: typeof value.maxGuestPassesPerMember === 'number' ? value.maxGuestPassesPerMember : 2,
-        churnAlertThreshold: typeof value.churnAlertThreshold === 'number' ? value.churnAlertThreshold : 72,
-        dailyDigestEnabled: value.dailyDigestEnabled !== false,
-        digestHour: typeof value.digestHour === 'string' ? value.digestHour : '08:00',
-        autoInvoiceGeneration: value.autoInvoiceGeneration === true,
-        autoEscalateMessages: value.autoEscalateMessages === true,
-        maintenanceLeadDays: typeof value.maintenanceLeadDays === 'number' ? value.maintenanceLeadDays : 10
-      };
+      return this.normalizeSettingsPayload(parsed);
     } catch (error) {
       if (error instanceof SyntaxError) {
         return null;

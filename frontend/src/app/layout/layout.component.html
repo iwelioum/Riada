@@ -76,10 +76,10 @@
 
             <div class="dropdown-divider"></div>
 
-            <button class="dropdown-item" (click)="navigateTo('/settings')">
+            <button class="dropdown-item" (click)="navigateTo('/settings')" *ngIf="canOpenSettings">
               <span>⚙️</span> Settings
             </button>
-            <button class="dropdown-item" (click)="navigateTo('/reports')">
+            <button class="dropdown-item" (click)="navigateTo('/reports')" *ngIf="canOpenReports">
               <span>📑</span> Reports
             </button>
 

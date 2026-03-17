@@ -322,7 +322,7 @@ describe('ApiService', () => {
     describe('generateMonthlyInvoice', () => {
       it('should generate invoice successfully', () => {
         // Arrange
-        const payload = { periodMonth: 3, periodYear: 2024, clubId: 1 };
+        const payload = { contractId: 42 };
         const mockResponse = { message: 'Invoice generated' };
 
         // Act
@@ -364,12 +364,20 @@ describe('ApiService', () => {
       it('should record payment successfully', () => {
         // Arrange
         const payload = { invoiceId: 1, amount: 500, paymentMethod: 'Credit Card' };
-        const mockResponse = { message: 'Payment recorded' };
+        const mockResponse = {
+          id: 99,
+          invoiceId: 1,
+          amount: 500,
+          paymentMethod: 'Credit Card',
+          transactionReference: 'txn-001',
+          paidAt: '2026-03-17T10:00:00Z',
+          status: 'Recorded'
+        };
 
         // Act
         service.recordPayment(payload).subscribe((result) => {
           // Assert
-          expect(result.message).toContain('Payment');
+          expect(result.status).toBe('Recorded');
         });
 
         const req = httpMock.expectOne(`${apiBaseUrl}/Billing/payments`);

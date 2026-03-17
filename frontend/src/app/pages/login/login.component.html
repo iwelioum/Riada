@@ -20,14 +20,23 @@
         DEV MODE
       </div>
 
-      <h2 class="login-title">Choose a profile</h2>
-      <p class="login-desc">Select a role to simulate different access levels during development</p>
+      <h2 class="login-title">Sign in</h2>
+      <p class="login-desc">Use a quick profile or manual token sign-in for role validation and testing.</p>
+
+      <div class="mode-switch">
+        <button type="button" class="mode-btn" [class.active]="mode === 'profiles'" (click)="setMode('profiles')">
+          Quick profiles
+        </button>
+        <button type="button" class="mode-btn" [class.active]="mode === 'manual'" (click)="setMode('manual')">
+          Manual sign-in
+        </button>
+      </div>
 
       <div *ngIf="error" class="login-error">
         {{ error }}
       </div>
 
-      <div class="user-cards">
+      <div class="user-cards" *ngIf="mode === 'profiles'">
         <button
           *ngFor="let user of devUsers"
           class="user-card"
@@ -56,7 +65,28 @@
         </button>
       </div>
 
-      <p class="login-hint">No password required · Production login will use individual credentials</p>
+      <form class="manual-form" *ngIf="mode === 'manual'" (ngSubmit)="loginManual()">
+        <label>
+          User ID
+          <input type="text" [(ngModel)]="manualUserId" name="manualUserId" placeholder="manager-user" autocomplete="username" />
+        </label>
+
+        <label>
+          Roles (comma separated)
+          <input
+            type="text"
+            [(ngModel)]="manualRolesInput"
+            name="manualRolesInput"
+            placeholder="manager,billing"
+          />
+        </label>
+
+        <button type="submit" class="manual-submit" [disabled]="!canSubmitManual">
+          {{ loadingUserId === 'manual' ? 'Signing in...' : 'Sign in' }}
+        </button>
+      </form>
+
+      <p class="login-hint">Token endpoint mode · Roles example: admin, manager, billing, coach, portique</p>
     </div>
   </div>
 </div>

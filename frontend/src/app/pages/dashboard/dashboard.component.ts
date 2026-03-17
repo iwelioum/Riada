@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { forkJoin, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
@@ -11,6 +12,7 @@ interface QuickAction {
   label: string;
   icon: string;
   helperText: string;
+  route: string;
 }
 
 @Component({
@@ -43,13 +45,13 @@ export class DashboardComponent implements OnInit {
   hasLoadedOnce = false;
 
   quickActions: QuickAction[] = [
-    { label: 'Add member', icon: '➕', helperText: 'Open Members to create a new profile safely.' },
-    { label: 'Book class', icon: '🎫', helperText: 'Use Classes to assign a member to a session.' },
-    { label: 'Record payment', icon: '💳', helperText: 'Open Billing to register an invoice payment.' },
-    { label: 'Open ticket', icon: '🛠️', helperText: 'Use Equipment to report a maintenance issue.' }
+    { label: 'Add member', icon: '➕', helperText: 'Open Members to create a new profile safely.', route: '/members' },
+    { label: 'Book class', icon: '🎫', helperText: 'Use Classes to assign a member to a session.', route: '/schedule' },
+    { label: 'Record payment', icon: '💳', helperText: 'Open Billing to register an invoice payment.', route: '/billing' },
+    { label: 'Open ticket', icon: '🛠️', helperText: 'Use Equipment to report a maintenance issue.', route: '/equipment' }
   ];
 
-  constructor(private api: ApiService, private cdr: ChangeDetectorRef) {}
+  constructor(private api: ApiService, private cdr: ChangeDetectorRef, private router: Router) {}
 
   ngOnInit(): void {
     this.loadClubsAndMetrics();
@@ -178,7 +180,13 @@ export class DashboardComponent implements OnInit {
   }
 
   runQuickAction(action: QuickAction): void {
-    this.infoMessage = `${action.label}: ${action.helperText}`;
+    this.infoMessage = null;
+    void this.router.navigate([action.route]).then((navigated) => {
+      if (!navigated) {
+        this.infoMessage = `${action.label}: ${action.helperText}`;
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   get showEmptyState(): boolean {

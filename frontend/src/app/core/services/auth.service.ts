@@ -53,6 +53,17 @@ export const DEV_USERS: DevUser[] = [
   }
 ];
 
+export interface AuthTokenResponse {
+  accessToken?: string;
+  AccessToken?: string;
+  refreshToken?: string;
+  RefreshToken?: string;
+  expiresIn?: number;
+  ExpiresIn?: number;
+  tokenType?: string;
+  TokenType?: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -61,21 +72,43 @@ export class AuthService {
 
   constructor(private http: HttpClient, private session: AuthSessionService) {}
 
-  login(userId: string, roles: string[]): Observable<any> {
+  login(userId: string, roles: string[]): Observable<AuthTokenResponse> {
     return this.http
-      .post<any>(`${this.apiUrl}/auth/token`, { userId, roles }, { withCredentials: true })
+      .post<AuthTokenResponse>(`${this.apiUrl}/auth/token`, { userId, roles }, { withCredentials: true })
       .pipe(
         tap((response) => {
-          const token = response?.accessToken ?? response?.AccessToken ?? '';
-          this.session.setAccessToken(token || '1');
+          const token = this.extractAccessToken(response);
+          this.session.setAccessToken(token);
           this.session.setRoles(roles);
         })
       );
   }
 
-  logout(): Observable<any> {
+  refreshToken(): Observable<AuthTokenResponse> {
     return this.http
-      .post<any>(`${this.apiUrl}/auth/logout`, {}, { withCredentials: true })
+      .post<AuthTokenResponse>(`${this.apiUrl}/auth/refresh`, {}, { withCredentials: true })
+      .pipe(
+        tap((response) => {
+          const token = this.extractAccessToken(response);
+          this.session.setAccessToken(token);
+        })
+      );
+  }
+
+  logout(): Observable<{ message?: string }> {
+    return this.http
+      .post<{ message?: string }>(`${this.apiUrl}/auth/logout`, {}, { withCredentials: true })
       .pipe(tap(() => this.session.clearAccessToken()));
+  }
+
+  private extractAccessToken(response: AuthTokenResponse | null | undefined): string {
+    const candidate = response?.accessToken ?? response?.AccessToken ?? '';
+    const normalized = typeof candidate === 'string' ? candidate.trim() : '';
+
+    if (normalized.length === 0) {
+      throw new Error('Auth response does not include an access token.');
+    }
+
+    return normalized;
   }
 }
