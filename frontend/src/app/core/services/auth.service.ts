@@ -63,7 +63,7 @@ export class AuthService {
 
   login(userId: string, roles: string[]): Observable<any> {
     return this.http
-      .post<any>(`${this.apiUrl}/Auth/token`, { userId, roles }, { withCredentials: true })
+      .post<any>(`${this.apiUrl}/auth/token`, { userId, roles }, { withCredentials: true })
       .pipe(
         tap((response) => {
           const token = response?.accessToken ?? response?.AccessToken ?? '';
@@ -75,7 +75,7 @@ export class AuthService {
 
   logout(): Observable<any> {
     return this.http
-      .post<any>(`${this.apiUrl}/Auth/logout`, {}, { withCredentials: true })
+      .post<any>(`${this.apiUrl}/auth/logout`, {}, { withCredentials: true })
       .pipe(tap(() => this.session.clearAccessToken()));
   }
 }

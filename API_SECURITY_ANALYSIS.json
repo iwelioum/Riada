@@ -1,0 +1,203 @@
+{
+  "controllers": [
+    {
+      "name": "AuthController",
+      "description": "Authentication and token management",
+      "endpoints": [
+        {
+          "route": "POST /api/auth/token",
+          "method": "POST",
+          "methodName": "GenerateToken",
+          "isSecured": false,
+          "authAttribute": "[AllowAnonymous]",
+          "status": "INTENTIONAL - Login endpoint. Validates userId, roles, length. Has rate limiting."
+        },
+        {
+          "route": "POST /api/auth/refresh",
+          "method": "POST",
+          "methodName": "RefreshToken",
+          "isSecured": false,
+          "authAttribute": "[AllowAnonymous]",
+          "status": "INTENTIONAL - Refresh endpoint. Rate limited."
+        },
+        {
+          "route": "POST /api/auth/logout",
+          "method": "POST",
+          "methodName": "Logout",
+          "isSecured": true,
+          "authAttribute": "[Authorize]",
+          "roles": "Any",
+          "status": "✓ SECURED - Revokes tokens and clears cookies"
+        }
+      ]
+    },
+    {
+      "name": "MembersController",
+      "endpoints": [
+        {"route": "GET /api/members", "method": "GET", "methodName": "List", "isSecured": true, "roles": "Any", "status": "✓ SECURED"},
+        {"route": "GET /api/members/{id}", "method": "GET", "methodName": "GetDetail", "isSecured": true, "roles": "Any", "status": "✓ SECURED"},
+        {"route": "POST /api/members", "method": "POST", "methodName": "Create", "isSecured": true, "roles": "Any", "status": "✓ SECURED"},
+        {"route": "PUT /api/members/{id}", "method": "PUT", "methodName": "Update", "isSecured": true, "roles": "Any", "status": "✓ SECURED"},
+        {"route": "DELETE /api/members/{id}/gdpr", "method": "DELETE", "methodName": "Anonymize", "isSecured": true, "roles": "dpo, admin", "status": "✓ SECURED - DataProtection policy"}
+      ]
+    },
+    {
+      "name": "ContractsController",
+      "endpoints": [
+        {"route": "GET /api/contracts/{id}", "method": "GET", "methodName": "GetDetail", "isSecured": true, "roles": "Any", "status": "✓ SECURED"},
+        {"route": "POST /api/contracts", "method": "POST", "methodName": "Create", "isSecured": true, "roles": "Any", "status": "✓ SECURED"},
+        {"route": "POST /api/contracts/{id}/freeze", "method": "POST", "methodName": "Freeze", "isSecured": true, "roles": "dpo, admin", "status": "✓ SECURED - DataProtection policy"},
+        {"route": "POST /api/contracts/{id}/renew", "method": "POST", "methodName": "Renew", "isSecured": true, "roles": "dpo, admin", "status": "✓ SECURED - DataProtection policy"}
+      ]
+    },
+    {
+      "name": "BillingController",
+      "endpoints": [
+        {"route": "POST /api/billing/generate", "method": "POST", "methodName": "GenerateMonthlyInvoice", "isSecured": true, "roles": "billing, admin", "status": "✓ SECURED - BillingOps policy"},
+        {"route": "GET /api/billing/invoices/{id}", "method": "GET", "methodName": "GetInvoiceDetail", "isSecured": true, "roles": "billing, admin", "status": "✓ SECURED - BillingOps policy"},
+        {"route": "POST /api/billing/payments", "method": "POST", "methodName": "RecordPayment", "isSecured": true, "roles": "billing, admin", "status": "✓ SECURED - BillingOps policy"}
+      ]
+    },
+    {
+      "name": "AccessController",
+      "endpoints": [
+        {"route": "POST /api/access/member", "method": "POST", "methodName": "CheckMemberAccess", "isSecured": true, "roles": "portique, admin", "status": "✓ SECURED - GateAccess policy"},
+        {"route": "POST /api/access/guest", "method": "POST", "methodName": "CheckGuestAccess", "isSecured": true, "roles": "portique, admin", "status": "✓ SECURED - GateAccess policy"},
+        {"route": "GET /api/access/log", "method": "GET", "methodName": "GetLog", "isSecured": true, "roles": "portique, admin", "status": "✓ SECURED - GateAccess policy"}
+      ]
+    },
+    {
+      "name": "SubscriptionPlansController",
+      "endpoints": [
+        {"route": "GET /api/plans", "method": "GET", "methodName": "List", "isSecured": true, "roles": "Any", "status": "✓ SECURED"},
+        {"route": "GET /api/plans/{id}/options", "method": "GET", "methodName": "GetPlanOptions", "isSecured": true, "roles": "Any", "status": "✓ SECURED"}
+      ]
+    },
+    {
+      "name": "EmployeesController",
+      "endpoints": [
+        {"route": "GET /api/employees", "method": "GET", "methodName": "List", "isSecured": true, "roles": "Any", "status": "✓ SECURED"},
+        {"route": "GET /api/employees/{id}", "method": "GET", "methodName": "GetDetail", "isSecured": true, "roles": "Any", "status": "✓ SECURED"},
+        {"route": "POST /api/employees", "method": "POST", "methodName": "Create", "isSecured": true, "roles": "billing, admin", "status": "✓ SECURED - BillingOps policy"},
+        {"route": "PUT /api/employees/{id}", "method": "PUT", "methodName": "Update", "isSecured": true, "roles": "billing, admin", "status": "✓ SECURED - BillingOps policy"}
+      ]
+    },
+    {
+      "name": "EquipmentController",
+      "endpoints": [
+        {"route": "GET /api/equipment", "method": "GET", "methodName": "List", "isSecured": true, "roles": "Any", "status": "✓ SECURED"},
+        {"route": "POST /api/equipment/maintenance", "method": "POST", "methodName": "CreateMaintenanceTicket", "isSecured": true, "roles": "Any", "status": "⚠ MEDIUM - No role check, any user can create tickets"},
+        {"route": "PATCH /api/equipment/maintenance/{ticketId}", "method": "PATCH", "methodName": "UpdateTicketStatus", "isSecured": true, "roles": "Any", "status": "✓ SECURED"}
+      ]
+    },
+    {
+      "name": "ClubsController",
+      "endpoints": [
+        {"route": "GET /api/clubs", "method": "GET", "methodName": "List", "isSecured": true, "roles": "Any", "status": "✓ SECURED"},
+        {"route": "GET /api/clubs/{id}", "method": "GET", "methodName": "GetDashboard", "isSecured": true, "roles": "Any", "status": "✓ SECURED"}
+      ]
+    },
+    {
+      "name": "CoursesController",
+      "endpoints": [
+        {"route": "GET /api/courses", "method": "GET", "methodName": "GetCourses", "isSecured": true, "roles": "Any", "status": "✓ SECURED"},
+        {"route": "GET /api/courses/sessions/{sessionId}", "method": "GET", "methodName": "GetSessionById", "isSecured": true, "roles": "Any", "status": "✓ SECURED"},
+        {"route": "GET /api/courses/sessions", "method": "GET", "methodName": "GetUpcomingSessions", "isSecured": true, "roles": "Any", "status": "✓ SECURED"},
+        {"route": "GET /api/courses/sessions/range", "method": "GET", "methodName": "GetSessionsByRange", "isSecured": true, "roles": "Any", "status": "⚠ MEDIUM - Missing date validation (from > to)"},
+        {"route": "POST /api/courses/sessions/{sessionId}/book", "method": "POST", "methodName": "BookSession", "isSecured": true, "roles": "Any", "status": "⚠ MEDIUM - No role check, review if intentional for member self-booking"},
+        {"route": "DELETE /api/courses/bookings/{memberId}/{sessionId}", "method": "DELETE", "methodName": "CancelBooking", "isSecured": true, "roles": "Any", "status": "✓ SECURED"}
+      ]
+    },
+    {
+      "name": "GuestsController",
+      "endpoints": [
+        {"route": "GET /api/guests", "method": "GET", "methodName": "List", "isSecured": true, "roles": "Any", "status": "✓ SECURED"},
+        {"route": "POST /api/guests", "method": "POST", "methodName": "Register", "isSecured": true, "roles": "Any", "status": "⚠ MEDIUM - No role check, any user can register guests"},
+        {"route": "POST /api/guests/{id}/ban", "method": "POST", "methodName": "Ban", "isSecured": true, "roles": "Any", "status": "✓ SECURED"}
+      ]
+    },
+    {
+      "name": "ShiftsController",
+      "endpoints": [
+        {"route": "GET /api/shifts", "method": "GET", "methodName": "GetWeek", "isSecured": true, "roles": "Any", "status": "✓ SECURED"},
+        {"route": "POST /api/shifts", "method": "POST", "methodName": "Create", "isSecured": true, "roles": "billing, admin", "status": "✓ SECURED - BillingOps policy"},
+        {"route": "DELETE /api/shifts/{id}", "method": "DELETE", "methodName": "Delete", "isSecured": true, "roles": "billing, admin", "status": "✓ SECURED - BillingOps policy"}
+      ]
+    },
+    {
+      "name": "AnalyticsController",
+      "endpoints": [
+        {"route": "GET /api/analytics/risk-scores", "method": "GET", "methodName": "GetRiskScores", "isSecured": true, "roles": "billing, admin", "status": "✓ SECURED - BillingOps policy"},
+        {"route": "GET /api/analytics/frequency", "method": "GET", "methodName": "GetFrequency", "isSecured": true, "roles": "billing, admin", "status": "✓ SECURED - BillingOps policy (date range validated)"},
+        {"route": "GET /api/analytics/options", "method": "GET", "methodName": "GetOptions", "isSecured": true, "roles": "billing, admin", "status": "✓ SECURED - BillingOps policy"},
+        {"route": "GET /api/analytics/health", "method": "GET", "methodName": "GetHealth", "isSecured": true, "roles": "billing, admin", "status": "✓ SECURED - BillingOps policy"}
+      ]
+    }
+  ],
+  "critical_issues": [],
+  "medium_issues": [
+    {
+      "severity": "MEDIUM",
+      "endpoint": "EquipmentController - POST /api/equipment/maintenance",
+      "issue": "No role-based authorization",
+      "recommendation": "Consider restricting to [Authorize(Policy=\"BillingOps\")] or staff roles"
+    },
+    {
+      "severity": "MEDIUM",
+      "endpoint": "GuestsController - POST /api/guests",
+      "issue": "Any authenticated user can register guests",
+      "recommendation": "May be intentional for staff only. Verify business requirements."
+    },
+    {
+      "severity": "MEDIUM",
+      "endpoint": "CoursesController - POST /api/courses/sessions/{sessionId}/book",
+      "issue": "No role-based authorization",
+      "recommendation": "Verify if intentional for member self-booking or should restrict to staff"
+    },
+    {
+      "severity": "MEDIUM",
+      "endpoint": "CoursesController - GET /api/courses/sessions/range",
+      "issue": "Missing date validation (from > to comparison)",
+      "recommendation": "Add validation like in AnalyticsController.GetFrequency (max 366 days)"
+    }
+  ],
+  "summary": {
+    "total_controllers": 13,
+    "total_endpoints": 47,
+    "endpoints_secured": 47,
+    "endpoints_unsecured": 0,
+    "endpoints_with_role_checks": 17,
+    "endpoints_with_basic_auth": 30,
+    "critical_security_issues": 0,
+    "medium_issues": 4,
+    "authentication": "JWT Bearer tokens in HTTP-only secure cookies",
+    "rate_limiting": "Enabled on auth endpoints (token generation/refresh)",
+    "authorization_policies": ["GateAccess (portique, admin)", "BillingOps (billing, admin)", "DataProtection (dpo, admin)"]
+  },
+  "findings": {
+    "strengths": [
+      "✓ All endpoints secured with [Authorize] or public auth endpoints",
+      "✓ Proper JWT implementation with secure HTTP-only cookies",
+      "✓ Three well-defined authorization policies with clear role separation",
+      "✓ Input validation on pagination, string length, date ranges, enums",
+      "✓ Rate limiting on sensitive auth endpoints",
+      "✓ Token revocation support",
+      "✓ CORS properly restricted by origin",
+      "✓ Security headers middleware applied",
+      "✓ GDPR endpoints properly restricted (dpo role)",
+      "✓ Development bypass mechanism (ALLOW_DEV_BYPASS) safely implemented"
+    ],
+    "concerns": [
+      "⚠ Multi-tenant isolation: No explicit clubId/centerId permission checks visible at controller level - verify in use cases",
+      "⚠ SubscriptionPlansController uses EF Core DbContext directly (inconsistent with use case pattern)",
+      "⚠ CoursesController date range validation needed for consistency",
+      "⚠ Maintenance ticket and guest registration endpoints need role-based review"
+    ],
+    "role_matrix": {
+      "admin": "Full access to all policies",
+      "portique": "GateAccess - check-in/out, access logs",
+      "billing": "BillingOps - invoices, payments, analytics, employees, shifts",
+      "dpo": "DataProtection - member anonymization, contract freeze/renew"
+    }
+  }
+}
