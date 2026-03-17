@@ -5,5 +5,7 @@ namespace Riada.Domain.Interfaces.Repositories;
 public interface IClassSessionRepository : IGenericRepository<ClassSession>
 {
     Task<IReadOnlyList<ClassSession>> GetUpcomingByClubAsync(uint clubId, int days = 14, CancellationToken ct = default);
+    Task<IReadOnlyList<ClassSession>> GetByClubAndRangeAsync(uint clubId, DateTime from, DateTime to, CancellationToken ct = default);
     Task<ClassSession?> GetWithBookingsAsync(uint sessionId, CancellationToken ct = default);
+    Task<ClassSession?> GetByIdWithDetailsAsync(uint sessionId, CancellationToken ct = default);
 }

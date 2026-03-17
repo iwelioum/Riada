@@ -93,4 +93,73 @@ public class AnalyticsService : IAnalyticsService
 
         return (isHealthy, status, data.TotalMembers, data.ActiveContracts, data.PendingInvoices);
     }
+
+    public async Task<IReadOnlyList<(long Id, bool IsGuest, uint PersonId, string PersonName, uint ClubId, string ClubName, DateTime AccessedAt, string AccessStatus, string? DenialReason)>> GetRecentAccessLogAsync(
+        int limit = 50,
+        CancellationToken ct = default)
+    {
+        await using var connection = new MySqlConnection(_connectionString);
+        await connection.OpenAsync(ct);
+
+        const string sql = @"
+            SELECT
+                CAST(al.id AS SIGNED)              AS Id,
+                FALSE                              AS IsGuest,
+                al.member_id                       AS PersonId,
+                CONCAT(m.first_name, ' ', m.last_name) AS PersonName,
+                al.club_id                         AS ClubId,
+                c.name                             AS ClubName,
+                al.accessed_at                     AS AccessedAt,
+                al.access_status                   AS AccessStatus,
+                al.denial_reason                   AS DenialReason
+            FROM access_log al
+            LEFT JOIN members m ON m.id = al.member_id
+            LEFT JOIN clubs   c ON c.id = al.club_id
+
+            UNION ALL
+
+            SELECT
+                CAST(gal.id AS SIGNED)             AS Id,
+                TRUE                               AS IsGuest,
+                gal.guest_id                       AS PersonId,
+                CONCAT(g.first_name, ' ', g.last_name) AS PersonName,
+                gal.club_id                        AS ClubId,
+                c.name                             AS ClubName,
+                gal.accessed_at                    AS AccessedAt,
+                gal.access_status                  AS AccessStatus,
+                gal.denial_reason                  AS DenialReason
+            FROM guest_access_log gal
+            LEFT JOIN guests g ON g.id = gal.guest_id
+            LEFT JOIN clubs  c ON c.id = gal.club_id
+
+            ORDER BY AccessedAt DESC
+            LIMIT @Limit";
+
+        var rows = await connection.QueryAsync<AccessLogRow>(sql, new { Limit = limit });
+
+        return rows.Select(r => (
+            (long)r.Id,
+            r.IsGuest,
+            (uint)r.PersonId,
+            r.PersonName ?? "Unknown",
+            (uint)r.ClubId,
+            r.ClubName ?? "Unknown",
+            r.AccessedAt,
+            r.AccessStatus ?? "unknown",
+            r.DenialReason
+        )).ToList().AsReadOnly();
+    }
+
+    private sealed class AccessLogRow
+    {
+        public long Id { get; init; }
+        public bool IsGuest { get; init; }
+        public long PersonId { get; init; }
+        public string? PersonName { get; init; }
+        public long ClubId { get; init; }
+        public string? ClubName { get; init; }
+        public DateTime AccessedAt { get; init; }
+        public string? AccessStatus { get; init; }
+        public string? DenialReason { get; init; }
+    }
 }

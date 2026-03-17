@@ -45,6 +45,7 @@ export interface MemberDetail extends MemberSummary {
   primaryGoal?: string | null;
   gdprConsentAt: string;
   marketingConsent: boolean;
+  medicalCertificateProvided?: boolean;
   contracts: ContractSummary[];
 }
 
@@ -99,7 +100,9 @@ export interface ContractLifecycleResponse {
 // Courses / Sessions
 export interface Session {
   id: number;
+  courseId: number;
   courseName: string;
+  activityType?: string | null;
   instructorName: string;
   clubName: string;
   startsAt: string;
@@ -110,6 +113,17 @@ export interface Session {
 }
 
 export type ClassSession = Session;
+
+export interface Course {
+  id: number;
+  courseName: string;
+  description?: string | null;
+  difficultyLevel: string;
+  durationMinutes: number;
+  maxCapacity: number;
+  estimatedCalories?: number | null;
+  activityType?: string | null;
+}
 
 // Billing
 export interface InvoiceLine {
@@ -155,10 +169,22 @@ export interface RecordPaymentPayload {
   errorCode?: string;
 }
 
+export interface RecordPaymentResponse {
+  id: number;
+  invoiceId: number;
+  amount: number;
+  paymentMethod: string;
+  transactionReference?: string | null;
+  paidAt: string;
+  status: string;
+}
+
 export interface GenerateInvoicePayload {
-  clubId: number;
-  periodYear: number;
-  periodMonth: number;
+  contractId: number;
+}
+
+export interface GenerateInvoiceResponse {
+  message: string;
 }
 
 // Equipment
@@ -275,4 +301,56 @@ export interface Guest {
   dateOfBirth?: string | null;
   sponsorMemberId?: number | null;
   sponsorName?: string | null;
+}
+
+// Employees
+export interface EmployeeSummary {
+  id: number;
+  lastName: string;
+  firstName: string;
+  email: string;
+  role: string;
+  clubId: number;
+  clubName: string;
+  hiredOn: string;
+}
+
+export interface EmployeeDetail extends EmployeeSummary {
+  monthlySalary?: number | null;
+  qualifications?: string | null;
+  createdAt: string;
+}
+
+export interface CreateEmployeePayload {
+  lastName: string;
+  firstName: string;
+  email: string;
+  role: string;
+  clubId: number;
+  monthlySalary?: number | null;
+  qualifications?: string | null;
+  hiredOn: string;
+}
+
+export interface UpdateEmployeePayload {
+  lastName?: string;
+  firstName?: string;
+  email?: string;
+  role?: string;
+  clubId?: number;
+  monthlySalary?: number | null;
+  qualifications?: string | null;
+}
+
+// Access Log
+export interface AccessLogEntry {
+  id: number;
+  isGuest: boolean;
+  personId: number;
+  personName: string;
+  clubId: number;
+  clubName: string;
+  accessedAt: string;
+  accessStatus: string;
+  denialReason?: string | null;
 }

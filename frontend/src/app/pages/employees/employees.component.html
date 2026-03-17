@@ -1,0 +1,40 @@
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="eyebrow">Team</div>
+      <h1>Employees</h1>
+      <p class="text-muted">Operational staff directory synced from Riada API.</p>
+    </div>
+    <button class="pill solid" (click)="loadEmployees()" [disabled]="loading">Refresh</button>
+  </div>
+
+  <div class="loading" *ngIf="loading">Loading employees...</div>
+  <div class="error" *ngIf="!loading && errorMessage">{{ errorMessage }}</div>
+
+  <div class="card" *ngIf="!loading && !errorMessage && !employees.length">
+    <div class="text-muted">No employees found.</div>
+  </div>
+
+  <div class="card" *ngIf="!loading && employees.length">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Role</th>
+          <th>Club</th>
+          <th>Email</th>
+          <th>Hired on</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let employee of employees; trackBy: trackByEmployeeId">
+          <td>{{ employee.firstName }} {{ employee.lastName }}</td>
+          <td>{{ employee.role }}</td>
+          <td>{{ employee.clubName }}</td>
+          <td>{{ employee.email }}</td>
+          <td>{{ employee.hiredOn | date:'mediumDate' }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

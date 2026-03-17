@@ -1,7 +1,9 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Riada.Application.DTOs.Requests.Access;
 using Riada.Application.UseCases.Access;
+using Riada.Domain.Interfaces.StoredProcedures;
 
 namespace Riada.API.Controllers;
 
@@ -29,5 +31,31 @@ public class AccessController : ControllerBase
     {
         var response = await useCase.ExecuteAsync(request, ct);
         return Ok(response);
+    }
+
+    [HttpGet("log")]
+    [Authorize(Policy = "GateAccess")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
+    public async Task<IActionResult> GetLog(
+        [FromQuery, Range(1, 200)] int limit = 50,
+        [FromServices] IAnalyticsService analyticsService = default!,
+        CancellationToken ct = default)
+    {
+        var entries = await analyticsService.GetRecentAccessLogAsync(limit, ct);
+        var result = entries.Select(e => new
+        {
+            id = e.Id,
+            isGuest = e.IsGuest,
+            personId = e.PersonId,
+            personName = e.PersonName,
+            clubId = e.ClubId,
+            clubName = e.ClubName,
+            accessedAt = e.AccessedAt,
+            accessStatus = e.AccessStatus,
+            denialReason = e.DenialReason
+        });
+        return Ok(result);
     }
 }

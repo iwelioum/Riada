@@ -1,5 +1,6 @@
 using FluentValidation;
 using Riada.Application.DTOs.Requests.Courses;
+using Riada.Application.DTOs.Responses.Courses;
 using Riada.Domain.Entities.CourseScheduling;
 using Riada.Domain.Enums;
 using Riada.Domain.Exceptions;
@@ -26,7 +27,7 @@ public class BookSessionUseCase
         _bookingRepository = bookingRepository;
     }
 
-    public async Task<string> ExecuteAsync(BookSessionRequest request, CancellationToken ct = default)
+    public async Task<BookingResponse> ExecuteAsync(BookSessionRequest request, CancellationToken ct = default)
     {
         await _validator.ValidateAndThrowAsync(request, ct);
         var session = await _sessionRepository.GetWithBookingsAsync(request.SessionId, ct)
@@ -38,23 +39,84 @@ public class BookSessionUseCase
         if (member.Status != MemberStatus.Active)
             throw new BusinessRuleException("MEMBER_NOT_ACTIVE", "Member account is not active.");
 
-        var status = session.EnrolledCount < session.Course.MaxCapacity
+        var bookingStatus = ResolveStatus(session);
+        var now = DateTime.UtcNow;
+        var existingBooking = await _bookingRepository.GetByCompositeKeyAsync(request.MemberId, request.SessionId, ct);
+
+        Booking booking;
+        string action;
+        string message;
+
+        if (existingBooking is null)
+        {
+            booking = new Booking
+            {
+                MemberId = request.MemberId,
+                SessionId = request.SessionId,
+                BookedAt = now,
+                Status = bookingStatus
+            };
+
+            await _bookingRepository.AddAsync(booking, ct);
+            await _bookingRepository.SaveChangesAsync(ct);
+            action = "created";
+            message = bookingStatus == BookingStatus.Confirmed
+                ? "Booking confirmed."
+                : "Added to waitlist — session is at full capacity.";
+        }
+        else if (existingBooking.Status == BookingStatus.Cancelled)
+        {
+            existingBooking.Status = bookingStatus;
+            existingBooking.BookedAt = now;
+
+            _bookingRepository.UpdateBooking(existingBooking);
+            await _bookingRepository.SaveChangesAsync(ct);
+            booking = existingBooking;
+            action = "rebooked";
+            message = bookingStatus == BookingStatus.Confirmed
+                ? "Booking reactivated and confirmed."
+                : "Booking reactivated and moved to waitlist.";
+        }
+        else
+        {
+            booking = existingBooking;
+            bookingStatus = existingBooking.Status;
+            action = bookingStatus == BookingStatus.Confirmed ? "already_confirmed" : "already_waitlisted";
+            message = bookingStatus == BookingStatus.Confirmed
+                ? "Member is already booked on this session."
+                : "Member is already waitlisted for this session.";
+        }
+
+        var capacity = await GetCapacitySnapshotAsync(request.SessionId, session, ct);
+
+        return new BookingResponse(
+            Message: message,
+            BookingStatus: bookingStatus.ToString(),
+            Action: action,
+            MemberId: booking.MemberId,
+            SessionId: booking.SessionId,
+            BookedAt: booking.BookedAt,
+            EnrolledCount: capacity.EnrolledCount,
+            MaxCapacity: capacity.MaxCapacity,
+            OccupancyPercent: capacity.OccupancyPercent);
+    }
+
+    private static BookingStatus ResolveStatus(ClassSession session)
+        => session.EnrolledCount < session.Course.MaxCapacity
             ? BookingStatus.Confirmed
             : BookingStatus.Waitlisted;
 
-        var booking = new Booking
-        {
-            MemberId = request.MemberId,
-            SessionId = request.SessionId,
-            BookedAt = DateTime.UtcNow,
-            Status = status
-        };
+    private async Task<(ushort EnrolledCount, ushort MaxCapacity, decimal OccupancyPercent)> GetCapacitySnapshotAsync(
+        uint sessionId,
+        ClassSession fallbackSession,
+        CancellationToken ct)
+    {
+        var refreshedSession = await _sessionRepository.GetByIdWithDetailsAsync(sessionId, ct) ?? fallbackSession;
+        var maxCapacity = refreshedSession.Course.MaxCapacity;
+        var occupancy = maxCapacity > 0
+            ? Math.Round(100m * refreshedSession.EnrolledCount / maxCapacity, 2)
+            : 0m;
 
-        await _bookingRepository.AddAsync(booking, ct);
-        await _bookingRepository.SaveChangesAsync(ct);
-
-        return status == BookingStatus.Confirmed
-            ? "Booking confirmed"
-            : "Added to waitlist — session is at full capacity";
+        return (refreshedSession.EnrolledCount, maxCapacity, occupancy);
     }
 }

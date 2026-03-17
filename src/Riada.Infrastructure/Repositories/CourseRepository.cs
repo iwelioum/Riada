@@ -11,4 +11,7 @@ public class CourseRepository : GenericRepository<Course>, ICourseRepository
 
     public async Task<Course?> GetByNameAsync(string name, CancellationToken ct = default)
         => await DbSet.FirstOrDefaultAsync(c => c.CourseName == name, ct);
+
+    public async Task<IReadOnlyList<Course>> GetAllAsync(CancellationToken ct = default)
+        => await DbSet.AsNoTracking().OrderBy(c => c.CourseName).ToListAsync(ct);
 }

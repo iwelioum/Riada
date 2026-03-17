@@ -3,7 +3,9 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
-import { AccessCheckResponse, ClubSummary } from '../../core/models/api-models';
+import { AccessCheckResponse, AccessLogEntry, ClubSummary } from '../../core/models/api-models';
+
+type ActiveTab = 'check' | 'history';
 
 @Component({
   selector: 'app-access-control',
@@ -13,6 +15,9 @@ import { AccessCheckResponse, ClubSummary } from '../../core/models/api-models';
   styleUrl: './access-control.component.scss'
 })
 export class AccessControlComponent implements OnInit {
+  activeTab: ActiveTab = 'check';
+
+  // Check tab
   clubs: ClubSummary[] = [];
   clubId: number | null = null;
   memberId: number | null = null;
@@ -30,10 +35,24 @@ export class AccessControlComponent implements OnInit {
   memberInfo: string | null = null;
   guestInfo: string | null = null;
 
+  // History tab
+  logEntries: AccessLogEntry[] = [];
+  loadingLog = false;
+  logError: string | null = null;
+  logLoaded = false;
+  logLimit = 50;
+
   constructor(private api: ApiService) {}
 
   ngOnInit(): void {
     this.loadClubs();
+  }
+
+  switchTab(tab: ActiveTab): void {
+    this.activeTab = tab;
+    if (tab === 'history' && !this.logLoaded) {
+      this.loadLog();
+    }
   }
 
   loadClubs(): void {
@@ -77,16 +96,13 @@ export class AccessControlComponent implements OnInit {
       this.memberFormError = 'Select a club before checking access.';
       return;
     }
-    if (!this.clubs.length) {
-      this.memberFormError = 'No clubs are available for access checks.';
-      return;
-    }
 
     this.loadingMember = true;
     this.api.checkMemberAccess({ memberId: this.memberId, clubId: this.clubId }).subscribe({
       next: (res) => {
         this.memberResult = res;
         this.memberInfo = `Member access checked at ${new Date().toLocaleTimeString()}.`;
+        this.logLoaded = false; // invalidate log cache so next tab switch refreshes
       },
       error: (error) => {
         this.memberFormError = this.getErrorMessage(error, 'Member access check failed.');
@@ -113,16 +129,13 @@ export class AccessControlComponent implements OnInit {
       this.guestFormError = 'Select a club before checking guest access.';
       return;
     }
-    if (!this.clubs.length) {
-      this.guestFormError = 'No clubs are available for access checks.';
-      return;
-    }
 
     this.loadingGuest = true;
     this.api.checkGuestAccess({ guestId: this.guestId, companionMemberId: this.companionMemberId, clubId: this.clubId }).subscribe({
       next: (res) => {
         this.guestResult = res;
         this.guestInfo = `Guest access checked at ${new Date().toLocaleTimeString()}.`;
+        this.logLoaded = false;
       },
       error: (error) => {
         this.guestFormError = this.getErrorMessage(error, 'Guest access check failed.');
@@ -132,21 +145,34 @@ export class AccessControlComponent implements OnInit {
     });
   }
 
+  loadLog(): void {
+    this.loadingLog = true;
+    this.logError = null;
+    this.api.getAccessLog(this.logLimit).subscribe({
+      next: (entries) => {
+        this.logEntries = entries;
+        this.logLoaded = true;
+        this.loadingLog = false;
+      },
+      error: (error) => {
+        this.logError = this.getErrorMessage(error, 'Unable to load access log.');
+        this.loadingLog = false;
+      }
+    });
+  }
+
+  refreshLog(): void {
+    this.logLoaded = false;
+    this.loadLog();
+  }
+
   private getErrorMessage(error: unknown, fallback: string): string {
     if (error instanceof HttpErrorResponse) {
-      if (error.status === 401) {
-        return 'Session expired. Sign in again for access-control checks.';
-      }
-      if (error.status === 403) {
-        return 'Your role is not authorized for gate-access endpoints.';
-      }
-
+      if (error.status === 401) return 'Session expired. Sign in again for access-control checks.';
+      if (error.status === 403) return 'Your role is not authorized for gate-access endpoints.';
       const backendMessage = error.error?.message ?? error.error?.Message;
-      if (typeof backendMessage === 'string' && backendMessage.trim().length > 0) {
-        return backendMessage;
-      }
+      if (typeof backendMessage === 'string' && backendMessage.trim().length > 0) return backendMessage;
     }
-
     return fallback;
   }
 }

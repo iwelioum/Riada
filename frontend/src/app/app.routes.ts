@@ -21,6 +21,10 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/members/members.component').then((m) => m.MembersComponent)
       },
       {
+        path: 'members/:id',
+        loadComponent: () => import('./pages/member-detail/member-detail.component').then((m) => m.MemberDetailComponent)
+      },
+      {
         path: 'statistics',
         loadComponent: () => import('./pages/statistics/statistics.component').then((m) => m.StatisticsComponent)
       },
@@ -36,10 +40,7 @@ export const routes: Routes = [
         path: 'schedule',
         loadComponent: () => import('./pages/schedule/schedule.component').then((m) => m.ScheduleComponent)
       },
-      {
-        path: 'classes',
-        loadComponent: () => import('./pages/classes/classes.component').then((m) => m.ClassesComponent)
-      },
+      { path: 'classes', redirectTo: 'schedule', pathMatch: 'full' },
       {
         path: 'classes/:id',
         loadComponent: () => import('./pages/class-details/class-details.component').then((m) => m.ClassDetailsComponent)
@@ -47,6 +48,10 @@ export const routes: Routes = [
       {
         path: 'trainers',
         loadComponent: () => import('./pages/trainers/trainers.component').then((m) => m.TrainersComponent)
+      },
+      {
+        path: 'employees',
+        loadComponent: () => import('./pages/employees/employees.component').then((m) => m.EmployeesComponent)
       },
       {
         path: 'messages',

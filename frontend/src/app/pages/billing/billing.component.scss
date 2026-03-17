@@ -1,17 +1,79 @@
 .billing-container {
   max-width: 1200px;
+  margin: 0 auto;
 }
 
 .page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 30px;
+  margin-bottom: 20px;
 
   h2 {
     margin: 0;
     color: #1f2937;
   }
+}
+
+.panel {
+  background: #fff;
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 16px;
+
+  h3 {
+    margin: 0 0 8px;
+    color: #1f2937;
+  }
+}
+
+.flow-panel {
+  .flow-steps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 8px 0 10px;
+    padding: 0;
+    list-style: none;
+  }
+
+  li {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 9999px;
+    padding: 6px 12px;
+    color: #374151;
+    font-size: 13px;
+    font-weight: 500;
+  }
+}
+
+.step-index {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #4f46e5;
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.step-chip {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: #4f46e5;
+  margin-right: 8px;
 }
 
 .actions-inline {
@@ -26,6 +88,7 @@
     gap: 4px;
     font-size: 13px;
     color: #4b5563;
+    min-width: 220px;
   }
 
   input {
@@ -33,19 +96,35 @@
     border: 1px solid #d1d5db;
     border-radius: 6px;
   }
+
+  select {
+    padding: 8px 10px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: #fff;
+  }
 }
 
-.generation-form,
-.payment-form {
-  background: #fff;
-  border-radius: 8px;
-  padding: 14px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  margin-bottom: 16px;
+.field-feedback {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #4b5563;
+
+  &.invalid {
+    color: #b91c1c;
+  }
 }
 
-.payment-form h4 {
+.invoice-headline {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 10px;
+}
+
+.payment-form {
+  margin-top: 10px;
 }
 
 .stats-grid {
@@ -56,10 +135,10 @@
 }
 
 .stat-card {
-  background: white;
+  background: #f9fafb;
   border-radius: 8px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  padding: 16px;
+  border: 1px solid #e5e7eb;
 
   h4 {
     margin: 0 0 10px 0;
@@ -93,7 +172,7 @@
 
 .error {
   color: #dc2626;
-  padding: 10px 0;
+  padding-top: 10px;
 }
 
 .success {
@@ -105,11 +184,19 @@
   margin-bottom: 12px;
 }
 
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 10px 16px;
+  color: #1f2937;
+  font-size: 14px;
+}
+
 table {
   width: 100%;
   background: white;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e5e7eb;
   border-collapse: collapse;
   overflow: hidden;
 
@@ -144,6 +231,24 @@ table {
       }
     }
   }
+
+  tfoot {
+    border-top: 2px solid #e5e7eb;
+
+    td {
+      padding: 12px 16px;
+      font-size: 13px;
+      color: #374151;
+      background: #f9fafb;
+      font-weight: 600;
+    }
+
+    .total-row td {
+      font-size: 14px;
+      color: #111827;
+      background: #eef2ff;
+    }
+  }
 }
 
 .badge {
@@ -166,6 +271,56 @@ table {
   &.badge-danger {
     background-color: #fee2e2;
     color: #991b1b;
+  }
+
+  &.badge-neutral {
+    background-color: #e5e7eb;
+    color: #374151;
+  }
+
+  &.badge-info {
+    background-color: #dbeafe;
+    color: #1e3a8a;
+  }
+
+  &.badge-issued {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+  }
+
+  &.badge-partially-paid {
+    background-color: #fef3c7;
+    color: #92400e;
+  }
+
+  &.badge-paid {
+    background-color: #d1fae5;
+    color: #065f46;
+  }
+
+  &.badge-overdue {
+    background-color: #fee2e2;
+    color: #991b1b;
+  }
+
+  &.badge-cancelled {
+    background-color: #f3f4f6;
+    color: #374151;
+  }
+
+  &.badge-draft {
+    background-color: #e0e7ff;
+    color: #3730a3;
+  }
+
+  &.badge-pending {
+    background-color: #ede9fe;
+    color: #6d28d9;
+  }
+
+  &.badge-unknown {
+    background-color: #e5e7eb;
+    color: #374151;
   }
 }
 
@@ -196,10 +351,19 @@ table {
     background-color: #e5e7eb;
     color: #111827;
   }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
 }
 
 .text-muted {
   color: #6b7280;
+}
+
+.text-right {
+  text-align: right;
 }
 
 .empty-state {
@@ -213,4 +377,31 @@ table {
 
 .invoice-detail {
   margin-top: 16px;
+}
+
+.totals-hierarchy {
+  margin-top: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+
+  .total-line {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 12px;
+    font-size: 14px;
+    color: #374151;
+    border-bottom: 1px solid #e5e7eb;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &.balance {
+      font-weight: 700;
+      color: #92400e;
+      background: #fffbeb;
+    }
+  }
 }

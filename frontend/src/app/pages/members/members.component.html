@@ -1,8 +1,8 @@
 <div class="members-container">
   <div class="page-header">
     <div>
-      <h2>Members & Contracts</h2>
-      <p class="text-muted">Pilotez l’inscription, les statuts et les contrats.</p>
+      <h2>Members</h2>
+      <p class="text-muted">Gérez les membres et consultez leurs profils.</p>
     </div>
     <div class="header-actions">
       <input type="search" [(ngModel)]="filters.search" placeholder="Search by name or email" (keyup.enter)="applyFilters()" />
@@ -12,24 +12,16 @@
         <option value="Suspended">Suspended</option>
         <option value="Anonymized">Anonymized</option>
       </select>
-      <button class="btn btn-secondary" (click)="applyFilters()" [disabled]="loading || metaLoading">Refresh</button>
-      <button class="btn btn-primary" (click)="openAddForm()" [disabled]="metaLoading">+ Add Member</button>
+      <button class="btn btn-secondary" (click)="applyFilters()" [disabled]="loading">Refresh</button>
+      <button *ngIf="canManageMembers" class="btn btn-primary" (click)="openAddForm()">+ Add Member</button>
     </div>
   </div>
 
-  <div class="loading" *ngIf="metaLoading">Loading plans and clubs...</div>
-  <div class="error" *ngIf="metaError">{{ metaError }}</div>
-  <div class="empty-state small" *ngIf="!metaLoading && !metaError && (!plans.length || !clubs.length)">
-    Membership metadata is incomplete. Retry metadata loading before creating contracts.
-    <div style="margin-top: 0.5rem;">
-      <button class="btn btn-secondary" (click)="loadMeta()">Retry metadata</button>
-    </div>
-  </div>
   <div class="error" *ngIf="actionError">{{ actionError }}</div>
   <div class="success" *ngIf="successMessage">{{ successMessage }}</div>
 
-  <!-- Add/Edit Form -->
-  <div class="form-section" *ngIf="showForm">
+  <!-- Add/Edit Form (admin/billing only) -->
+  <div class="form-section" *ngIf="showForm && canManageMembers">
     <div class="form-card">
       <h3>{{ editingId ? 'Edit Member' : 'Add New Member' }}</h3>
       <div class="loading" *ngIf="formLoading">Loading member profile...</div>
@@ -83,40 +75,49 @@
     </div>
   </div>
 
-  <div class="grid-two">
-    <!-- Members Table -->
-    <div class="table-section">
-      <div class="loading" *ngIf="loading">Loading members...</div>
-      <div class="error" *ngIf="error">{{ error }}</div>
-      
-      <table *ngIf="!loading && members.length > 0">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Phone</th>
-            <th>Status</th>
-            <th>Last Visit</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let member of members" [class.active-row]="selectedMember?.id === member.id">
-            <td>{{ member.firstName }} {{ member.lastName }}</td>
-            <td>{{ member.email }}</td>
-            <td>{{ member.mobilePhone || '—' }}</td>
-            <td>
-              <span [ngClass]="'badge ' + getStatusBadgeClass(member.status)">
-                {{ member.status }}
-              </span>
-            </td>
-            <td>{{ member.lastVisitDate | date:'short' }}</td>
-            <td>
-              <div class="actions">
-                <button class="btn btn-sm" (click)="selectMember(member)" [disabled]="detailLoading || savingMember">View</button>
-                <button class="btn btn-sm" (click)="editMember(member)" [disabled]="detailLoading || savingMember">Edit</button>
+  <!-- Members Table -->
+  <div class="table-section">
+    <div class="loading" *ngIf="loading">Loading members...</div>
+    <div class="error" *ngIf="error">{{ error }}</div>
+
+    <table *ngIf="!loading && members.length > 0">
+      <thead>
+        <tr>
+          <th>Member</th>
+          <th>Phone</th>
+          <th>Plan</th>
+          <th>Status</th>
+          <th>Access</th>
+          <th>Last Visit</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let member of members" class="member-row" (click)="viewMember(member)">
+          <td>
+            <div class="member-name">{{ member.firstName }} {{ member.lastName }}</div>
+            <div class="member-email">{{ member.email }}</div>
+          </td>
+          <td>{{ member.mobilePhone || '—' }}</td>
+          <td>{{ member.currentPlan || '—' }}</td>
+          <td>
+            <span [ngClass]="'badge ' + getStatusBadgeClass(member.status)">{{ member.status }}</span>
+          </td>
+          <td>
+            <span class="access-badge"
+                  [class.access-ok]="canMemberEnter(member.status)"
+                  [class.access-no]="!canMemberEnter(member.status)">
+              {{ canMemberEnter(member.status) ? '✓ Can enter' : '✗ No access' }}
+            </span>
+          </td>
+          <td>{{ member.lastVisitDate | date:'shortDate' }}</td>
+          <td (click)="$event.stopPropagation()">
+            <div class="actions">
+              <button class="btn btn-sm" (click)="viewMember(member)">View</button>
+              <button *ngIf="canManageMembers" class="btn btn-sm" (click)="editMember(member)" [disabled]="savingMember">Edit</button>
+              <ng-container *ngIf="canManageMembers">
                 <ng-container *ngIf="anonymizeConfirmId !== member.id; else confirmAnonymize">
-                  <button class="btn btn-sm btn-danger" (click)="requestDeleteMember(member.id)" [disabled]="anonymizingMemberId !== null || detailLoading">Anonymize</button>
+                  <button class="btn btn-sm btn-danger" (click)="requestDeleteMember(member.id)" [disabled]="anonymizingMemberId !== null">Anonymize</button>
                 </ng-container>
                 <ng-template #confirmAnonymize>
                   <button class="btn btn-sm btn-danger" (click)="deleteMember(member.id)" [disabled]="anonymizingMemberId === member.id">
@@ -124,120 +125,15 @@
                   </button>
                   <button class="btn btn-sm btn-secondary" (click)="cancelDeleteMember()" [disabled]="anonymizingMemberId === member.id">Cancel</button>
                 </ng-template>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+              </ng-container>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
 
-      <div class="empty-state" *ngIf="!loading && hasLoadedMembers && members.length === 0">
-        <p>{{ membersEmptyMessage }}</p>
-      </div>
-    </div>
-
-    <!-- Member Detail + Contracts -->
-    <div class="detail-panel" *ngIf="selectedMember as member">
-      <div class="detail-header">
-        <div>
-          <div class="eyebrow">Profile</div>
-          <h3>{{ member.firstName }} {{ member.lastName }}</h3>
-          <p class="text-muted">{{ member.email }}</p>
-        </div>
-        <div>
-          <span class="badge" [ngClass]="getStatusBadgeClass(member.status)">{{ member.status }}</span>
-        </div>
-      </div>
-
-      <div class="detail-grid">
-        <div>
-          <div class="detail-label">Phone</div>
-          <div class="detail-value">{{ member.mobilePhone || '—' }}</div>
-        </div>
-        <div>
-          <div class="detail-label">Home club</div>
-          <div class="detail-value">{{ member.homeClub || '—' }}</div>
-        </div>
-        <div>
-          <div class="detail-label">Plan</div>
-          <div class="detail-value">{{ member.currentPlan || '—' }}</div>
-        </div>
-        <div>
-          <div class="detail-label">Last visit</div>
-          <div class="detail-value">{{ member.lastVisitDate | date:'short' }}</div>
-        </div>
-      </div>
-
-      <div class="contracts">
-        <div class="flex-between">
-          <h4>Contracts</h4>
-          <span class="pill muted">{{ member.contracts.length }} active</span>
-        </div>
-        <div class="success small" *ngIf="contractSuccess">{{ contractSuccess }}</div>
-        <div class="error small" *ngIf="contractError">{{ contractError }}</div>
-        <div class="contract-card" *ngFor="let contract of member.contracts">
-          <div>
-            <div class="contract-title">{{ contract.planName }}</div>
-            <div class="text-muted">{{ contract.contractType }} · {{ contract.homeClub }}</div>
-            <div class="text-muted">From {{ contract.startDate | date:'mediumDate' }} to {{ contract.endDate || 'Open' }}</div>
-          </div>
-          <div class="actions">
-            <input
-              class="freeze-input"
-              type="number"
-              min="1"
-              [ngModel]="freezeDurations[contract.id] ?? 30"
-              (ngModelChange)="setFreezeDuration(contract.id, $event)"
-              [ngModelOptions]="{ standalone: true }" />
-            <button class="btn btn-sm" (click)="freezeContract(contract)" [disabled]="isContractActionLoading(contract.id)">Freeze</button>
-            <button class="btn btn-sm" (click)="renewContract(contract)" [disabled]="isContractActionLoading(contract.id)">Renew</button>
-          </div>
-        </div>
-        <div *ngIf="!member.contracts.length" class="empty-state small">No contract yet.</div>
-      </div>
-
-      <div class="form-card">
-        <h4>Create contract</h4>
-        <div class="form-row">
-          <label>Plan</label>
-          <select [(ngModel)]="contractForm.planId">
-            <option [ngValue]="null">Select plan</option>
-            <option *ngFor="let plan of plans" [ngValue]="plan.id">{{ plan.planName }} - {{ plan.basePrice | currency:'USD':'symbol' }}</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <label>Home club</label>
-          <select [(ngModel)]="contractForm.homeClubId">
-            <option [ngValue]="null">Select club</option>
-            <option *ngFor="let club of clubs" [ngValue]="club.id">{{ club.name }}</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <label>Type</label>
-          <select [(ngModel)]="contractForm.contractType">
-            <option value="FixedTerm">Fixed term</option>
-            <option value="OpenEnded">Open ended</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <label>Start date</label>
-          <input type="date" [(ngModel)]="contractForm.startDate">
-        </div>
-        <div class="form-row">
-          <label>End date</label>
-          <input type="date" [(ngModel)]="contractForm.endDate">
-        </div>
-        <div class="form-actions">
-          <button class="btn btn-success" (click)="createContract()" [disabled]="creatingContract || !plans.length || !clubs.length">
-            {{ creatingContract ? 'Creating...' : 'Create contract' }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div class="detail-panel" *ngIf="!selectedMember">
-      <div class="loading" *ngIf="detailLoading">Loading member detail...</div>
-      <div class="error" *ngIf="detailError">{{ detailError }}</div>
-      <div class="empty-state" *ngIf="!detailLoading && !detailError">Select a member to view contracts and profile data.</div>
+    <div class="empty-state" *ngIf="!loading && hasLoadedMembers && members.length === 0">
+      <p>{{ membersEmptyMessage }}</p>
     </div>
   </div>
 </div>

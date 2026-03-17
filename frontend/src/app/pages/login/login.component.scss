@@ -45,6 +45,21 @@
     text-align: center;
     line-height: 1.6;
   }
+
+  .brand-features {
+    margin-top: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .feature-item {
+    font-size: 13px;
+    color: #475569;
+    padding: 6px 0;
+    border-bottom: 1px solid #1e2130;
+  }
 }
 
 .login-panel {
@@ -57,7 +72,36 @@
 
 .login-card {
   width: 100%;
-  max-width: 420px;
+  max-width: 480px;
+}
+
+.dev-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #f59e0b;
+  border-radius: 999px;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+
+  .dev-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #f59e0b;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
 }
 
 .login-title {
@@ -71,6 +115,7 @@
   font-size: 14px;
   color: #64748b;
   margin: 0 0 28px;
+  line-height: 1.5;
 }
 
 .login-error {
@@ -92,12 +137,12 @@
 
 .user-card {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 16px;
   padding: 16px 20px;
   background: #1a1d2e;
   border: 1px solid #1e2130;
-  border-radius: 12px;
+  border-radius: 14px;
   cursor: pointer;
   transition: all 0.15s ease;
   text-align: left;
@@ -105,8 +150,8 @@
 
   &:hover:not(:disabled) {
     background: #1e2235;
-    border-color: #6c63ff;
-    transform: translateX(2px);
+    border-color: var(--accent, #6c63ff);
+    transform: translateX(3px);
   }
 
   &:disabled {
@@ -115,16 +160,15 @@
   }
 
   &.loading {
-    border-color: #6c63ff;
+    border-color: var(--accent, #6c63ff);
     background: #1e2235;
   }
 }
 
 .user-avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #6c63ff, #4f46e5);
+  width: 46px;
+  height: 46px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -132,14 +176,16 @@
   font-weight: 700;
   color: white;
   flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .user-info {
   flex: 1;
+  min-width: 0;
 
   .user-label {
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 700;
     color: #e2e8f0;
     margin-bottom: 3px;
   }
@@ -147,13 +193,38 @@
   .user-desc {
     font-size: 12px;
     color: #64748b;
+    margin-bottom: 10px;
   }
 }
 
+.access-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.chip {
+  display: inline-block;
+  padding: 2px 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.chip-more {
+  color: #64748b;
+  border-style: dashed;
+}
+
 .user-arrow {
-  color: #6c63ff;
+  color: var(--accent, #6c63ff);
   font-size: 18px;
   font-weight: 700;
+  flex-shrink: 0;
+  padding-top: 2px;
 
   .spinner {
     display: inline-block;
@@ -169,6 +240,6 @@
 .login-hint {
   text-align: center;
   font-size: 12px;
-  color: #475569;
+  color: #334155;
   margin: 0;
 }

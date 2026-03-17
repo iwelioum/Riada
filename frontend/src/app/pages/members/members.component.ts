@@ -2,18 +2,20 @@ import { Component, OnInit } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { ApiService } from '../../core/services/api.service';
+import { RoleService } from '../../core/services/role.service';
 import {
   ClubSummary,
-  ContractSummary,
-  CreateContractPayload,
   CreateMemberPayload,
   MemberDetail,
   MemberSummary,
   SubscriptionPlan
 } from '../../core/models/api-models';
+
+// MemberDetail used by editMember (populateFormFromMemberDetail)
 
 @Component({
   selector: 'app-members',
@@ -24,30 +26,22 @@ import {
 })
 export class MembersComponent implements OnInit {
   members: MemberSummary[] = [];
-  selectedMember: MemberDetail | null = null;
   plans: SubscriptionPlan[] = [];
   clubs: ClubSummary[] = [];
   loading = false;
   metaLoading = false;
   formLoading = false;
-  detailLoading = false;
   error: string | null = null;
   metaError: string | null = null;
-  detailError: string | null = null;
   actionError: string | null = null;
   successMessage: string | null = null;
   formError: string | null = null;
-  contractError: string | null = null;
-  contractSuccess: string | null = null;
   savingMember = false;
-  creatingContract = false;
-  contractActionLoadingId: number | null = null;
   anonymizeConfirmId: number | null = null;
   anonymizingMemberId: number | null = null;
   showForm = false;
   editingId: number | null = null;
   filters = { status: '', search: '' };
-  freezeDurations: Record<number, number | undefined> = {};
   hasLoadedMembers = false;
 
   formData: CreateMemberPayload = {
@@ -66,14 +60,23 @@ export class MembersComponent implements OnInit {
     medicalCertificateProvided: false
   };
 
-  contractForm: { planId: number | null; homeClubId: number | null; contractType: string; startDate: string; endDate?: string | null } = {
-    planId: null,
-    homeClubId: null,
-    contractType: 'FixedTerm',
-    startDate: new Date().toISOString().split('T')[0]
-  };
+  constructor(private apiService: ApiService, private roleService: RoleService, private router: Router) {}
 
-  constructor(private apiService: ApiService) {}
+  get isPortique(): boolean {
+    return this.roleService.hasRole('portique') && !this.roleService.isAdmin();
+  }
+
+  get canManageMembers(): boolean {
+    return this.roleService.hasAnyRole(['admin', 'billing', 'portique']);
+  }
+
+  get canManageContracts(): boolean {
+    return this.roleService.hasAnyRole(['admin', 'billing', 'portique']);
+  }
+
+  canMemberEnter(status: string): boolean {
+    return status === 'Active';
+  }
 
   ngOnInit() {
     this.loadMeta();
@@ -136,9 +139,6 @@ export class MembersComponent implements OnInit {
         this.members = data.items;
         this.loading = false;
         this.hasLoadedMembers = true;
-        if (this.selectedMember && !this.members.find((member) => member.id === this.selectedMember?.id)) {
-          this.selectedMember = null;
-        }
       },
       error: (err) => {
         this.members = [];
@@ -149,23 +149,8 @@ export class MembersComponent implements OnInit {
     });
   }
 
-  selectMember(member: MemberSummary) {
-    this.selectedMember = null;
-    this.detailLoading = true;
-    this.detailError = null;
-    this.clearContractMessages();
-    this.apiService.getMemberDetail(member.id).subscribe({
-      next: (detail) => {
-        this.selectedMember = detail;
-        this.freezeDurations = Object.fromEntries(detail.contracts.map((contract) => [contract.id, 30]));
-        this.detailLoading = false;
-      },
-      error: (err) => {
-        this.selectedMember = null;
-        this.detailError = this.getErrorMessage(err, 'Failed to load member detail.');
-        this.detailLoading = false;
-      }
-    });
+  viewMember(member: MemberSummary): void {
+    this.router.navigate(['/members', member.id]);
   }
 
   openAddForm() {
@@ -292,9 +277,6 @@ export class MembersComponent implements OnInit {
     this.apiService.anonymizeMember(id, 'admin').subscribe({
       next: () => {
         this.loadMembers();
-        if (this.selectedMember?.id === id) {
-          this.selectedMember = null;
-        }
         this.successMessage = 'Member anonymized successfully.';
       },
       error: (err) => {
@@ -305,108 +287,6 @@ export class MembersComponent implements OnInit {
         this.anonymizeConfirmId = null;
       }
     });
-  }
-
-  createContract() {
-    if (this.creatingContract) {
-      return;
-    }
-
-    this.clearContractMessages();
-    if (!this.selectedMember || !this.contractForm.planId || !this.contractForm.homeClubId || !this.contractForm.contractType || !this.contractForm.startDate) {
-      this.contractError = 'Fill contract fields (plan, club, type, start date).';
-      return;
-    }
-
-    if (this.contractForm.endDate && this.contractForm.endDate < this.contractForm.startDate) {
-      this.contractError = 'Contract end date must be after the start date.';
-      return;
-    }
-
-    this.creatingContract = true;
-    const payload: CreateContractPayload = {
-      memberId: this.selectedMember.id,
-      planId: Number(this.contractForm.planId),
-      homeClubId: Number(this.contractForm.homeClubId),
-      contractType: this.contractForm.contractType,
-      startDate: this.contractForm.startDate,
-      endDate: this.contractForm.endDate || null
-    };
-
-    this.apiService.createContract(payload).subscribe({
-      next: (res) => {
-        this.contractSuccess = res.message;
-        this.reloadSelected();
-        this.creatingContract = false;
-      },
-      error: (err) => {
-        this.contractError = this.getErrorMessage(err, 'Failed to create contract.');
-        this.creatingContract = false;
-      }
-    });
-  }
-
-  setFreezeDuration(contractId: number, value: number | string): void {
-    const parsed = Number(value);
-    if (Number.isFinite(parsed) && parsed > 0) {
-      this.freezeDurations[contractId] = Math.floor(parsed);
-      return;
-    }
-
-    delete this.freezeDurations[contractId];
-  }
-
-  freezeContract(contract: ContractSummary) {
-    if (this.contractActionLoadingId !== null) {
-      return;
-    }
-
-    this.clearContractMessages();
-    const duration = this.freezeDurations[contract.id] ?? 30;
-    if (!Number.isFinite(duration) || duration < 1) {
-      this.contractError = 'Freeze duration must be at least 1 day.';
-      return;
-    }
-
-    this.contractActionLoadingId = contract.id;
-    this.apiService.freezeContract(contract.id, duration).subscribe({
-      next: (res) => {
-        this.contractSuccess = res.message;
-        this.reloadSelected();
-        this.contractActionLoadingId = null;
-      },
-      error: (err) => {
-        this.contractError = this.getErrorMessage(err, 'Failed to freeze contract.');
-        this.contractActionLoadingId = null;
-      }
-    });
-  }
-
-  renewContract(contract: ContractSummary) {
-    if (this.contractActionLoadingId !== null) {
-      return;
-    }
-
-    this.clearContractMessages();
-    this.contractActionLoadingId = contract.id;
-    this.apiService.renewContract(contract.id).subscribe({
-      next: (res) => {
-        this.contractSuccess = res.message;
-        this.reloadSelected();
-        this.contractActionLoadingId = null;
-      },
-      error: (err) => {
-        this.contractError = this.getErrorMessage(err, 'Failed to renew contract.');
-        this.contractActionLoadingId = null;
-      }
-    });
-  }
-
-  private reloadSelected() {
-    if (this.selectedMember) {
-      this.selectMember(this.selectedMember);
-      this.loadMembers();
-    }
   }
 
   private validateMemberForm(): string | null {
@@ -439,11 +319,6 @@ export class MembersComponent implements OnInit {
     this.successMessage = null;
   }
 
-  private clearContractMessages(): void {
-    this.contractError = null;
-    this.contractSuccess = null;
-  }
-
   resetForm() {
     this.formData = {
       firstName: '',
@@ -460,16 +335,6 @@ export class MembersComponent implements OnInit {
       marketingConsent: true,
       medicalCertificateProvided: false
     };
-    this.contractForm = {
-      planId: null,
-      homeClubId: null,
-      contractType: 'FixedTerm',
-      startDate: new Date().toISOString().split('T')[0]
-    };
-  }
-
-  isContractActionLoading(contractId: number): boolean {
-    return this.contractActionLoadingId === contractId;
   }
 
   get membersEmptyMessage(): string {

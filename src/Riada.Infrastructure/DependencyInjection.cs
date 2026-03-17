@@ -48,6 +48,8 @@ public static class DependencyInjection
         services.AddScoped<IEquipmentRepository, EquipmentRepository>();
         services.AddScoped<IMaintenanceTicketRepository, MaintenanceTicketRepository>();
         services.AddScoped<IBookingRepository, BookingRepository>();
+        services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+        services.AddScoped<IShiftRepository, ShiftRepository>();
 
         // Stored Procedure services (Dapper — stateless, thread-safe, use singleton)
         services.AddSingleton<IAccessCheckService>(_ => new AccessCheckService(connectionString));

@@ -313,13 +313,13 @@ public static class EnumConverters
         DifficultyLevel.AllLevels => "all_levels",
         _ => throw new ArgumentOutOfRangeException(nameof(v))
     };
-    public static DifficultyLevel ToDifficultyLevel(string v) => v switch
+    public static DifficultyLevel ToDifficultyLevel(string? v) => v switch
     {
         "beginner" => DifficultyLevel.Beginner,
         "intermediate" => DifficultyLevel.Intermediate,
         "advanced" => DifficultyLevel.Advanced,
         "all_levels" => DifficultyLevel.AllLevels,
-        _ => throw new ArgumentOutOfRangeException(nameof(v))
+        _ => DifficultyLevel.AllLevels
     };
 
     // ── ActivityType ──
@@ -334,7 +334,7 @@ public static class EnumConverters
         ActivityType.Mixed => "mixed",
         _ => throw new ArgumentOutOfRangeException(nameof(v))
     };
-    public static ActivityType ToActivityType(string v) => v switch
+    public static ActivityType ToActivityType(string? v) => v switch
     {
         "cardio" => ActivityType.Cardio,
         "strength" => ActivityType.Strength,
@@ -343,7 +343,7 @@ public static class EnumConverters
         "dance" => ActivityType.Dance,
         "combat" => ActivityType.Combat,
         "mixed" => ActivityType.Mixed,
-        _ => throw new ArgumentOutOfRangeException(nameof(v))
+        _ => ActivityType.Mixed
     };
 
     // ── BookingStatus ──
@@ -359,6 +359,28 @@ public static class EnumConverters
         "confirmed" => BookingStatus.Confirmed,
         "waitlisted" => BookingStatus.Waitlisted,
         "cancelled" => BookingStatus.Cancelled,
+        _ => throw new ArgumentOutOfRangeException(nameof(v))
+    };
+
+    // ── ShiftType ──
+    public static string ToMySqlString(this ShiftType v) => v switch
+    {
+        ShiftType.Opening => "opening",
+        ShiftType.Morning => "morning",
+        ShiftType.Afternoon => "afternoon",
+        ShiftType.Evening => "evening",
+        ShiftType.Closing => "closing",
+        ShiftType.Custom => "custom",
+        _ => throw new ArgumentOutOfRangeException(nameof(v))
+    };
+    public static ShiftType ToShiftType(string v) => v switch
+    {
+        "opening" => ShiftType.Opening,
+        "morning" => ShiftType.Morning,
+        "afternoon" => ShiftType.Afternoon,
+        "evening" => ShiftType.Evening,
+        "closing" => ShiftType.Closing,
+        "custom" => ShiftType.Custom,
         _ => throw new ArgumentOutOfRangeException(nameof(v))
     };
 

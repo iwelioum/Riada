@@ -15,6 +15,7 @@ public class RiadaDbContext : DbContext
     // ── Club Management ──
     public DbSet<Club> Clubs => Set<Club>();
     public DbSet<Employee> Employees => Set<Employee>();
+    public DbSet<Shift> Shifts => Set<Shift>();
     public DbSet<Equipment> Equipment => Set<Equipment>();
     public DbSet<MaintenanceTicket> MaintenanceTickets => Set<MaintenanceTicket>();
 

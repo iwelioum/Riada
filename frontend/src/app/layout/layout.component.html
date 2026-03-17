@@ -9,7 +9,7 @@
     </div>
 
     <nav class="nav-menu">
-      <section class="nav-group" *ngFor="let group of navGroups">
+      <section class="nav-group" *ngFor="let group of visibleNavGroups">
         <div class="group-title">{{ group.title }}</div>
         <a
           *ngFor="let item of group.items"
@@ -53,11 +53,41 @@
         <button class="circle blue">?</button>
         <button class="circle yellow">!</button>
         <button class="circle lime">🔔</button>
-        <div class="profile">
-          <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop" alt="User" />
-          <div>
-            <div class="name">Kalendra Wingman</div>
-            <div class="role">Coach</div>
+        <div class="profile-wrapper">
+          <div class="profile" (click)="toggleProfile()">
+            <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop" alt="User" />
+            <div>
+              <div class="name">Riada User</div>
+              <div class="role">{{ currentRoleLabel }}</div>
+            </div>
+            <span class="chevron" [class.open]="profileOpen">▾</span>
+          </div>
+
+          <div class="profile-dropdown" *ngIf="profileOpen">
+            <div class="dropdown-header">
+              <div class="dropdown-avatar">
+                <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop" alt="User" />
+              </div>
+              <div>
+                <div class="dropdown-name">Riada User</div>
+                <div class="dropdown-role-badge">{{ currentRoleLabel }}</div>
+              </div>
+            </div>
+
+            <div class="dropdown-divider"></div>
+
+            <button class="dropdown-item" (click)="navigateTo('/settings')">
+              <span>⚙️</span> Settings
+            </button>
+            <button class="dropdown-item" (click)="navigateTo('/reports')">
+              <span>📑</span> Reports
+            </button>
+
+            <div class="dropdown-divider"></div>
+
+            <button class="dropdown-item danger" (click)="logout()">
+              <span>↩</span> Logout
+            </button>
           </div>
         </div>
       </div>

@@ -9,6 +9,9 @@ export interface DevUser {
   userId: string;
   roles: string[];
   description: string;
+  accent: string;
+  avatarGradient: string;
+  accessList: string[];
 }
 
 export const DEV_USERS: DevUser[] = [
@@ -16,19 +19,37 @@ export const DEV_USERS: DevUser[] = [
     label: 'Administrator',
     userId: 'admin',
     roles: ['admin', 'billing', 'portique', 'dpo'],
-    description: 'Full access to all features'
+    description: 'Full platform access',
+    accent: '#6c63ff',
+    avatarGradient: 'linear-gradient(135deg, #6c63ff, #4f46e5)',
+    accessList: ['Dashboard', 'Members', 'Billing', 'Access Control', 'Settings', 'Reports', 'Equipment']
   },
   {
     label: 'Billing Manager',
     userId: 'billing-user',
     roles: ['billing'],
-    description: 'Invoices, payments, contracts'
+    description: 'Invoices, payments & contracts',
+    accent: '#10b981',
+    avatarGradient: 'linear-gradient(135deg, #10b981, #059669)',
+    accessList: ['Dashboard', 'Members', 'Billing', 'Schedule', 'Classes', 'Reports']
   },
   {
-    label: 'Portique Staff',
+    label: 'Receptionist',
     userId: 'portique-user',
     roles: ['portique'],
-    description: 'Access control and check-in'
+    description: 'Front desk — members, contracts, check-in, classes',
+    accent: '#f59e0b',
+    avatarGradient: 'linear-gradient(135deg, #f59e0b, #d97706)',
+    accessList: ['Members', 'Schedule', 'Classes', 'Billing (pay)', 'Access', 'Guests', 'Employees']
+  },
+  {
+    label: 'DPO',
+    userId: 'dpo-user',
+    roles: ['dpo'],
+    description: 'Data protection & compliance',
+    accent: '#ec4899',
+    avatarGradient: 'linear-gradient(135deg, #ec4899, #db2777)',
+    accessList: ['Dashboard', 'Members', 'Reports']
   }
 ];
 
@@ -47,6 +68,7 @@ export class AuthService {
         tap((response) => {
           const token = response?.accessToken ?? response?.AccessToken ?? '';
           this.session.setAccessToken(token || '1');
+          this.session.setRoles(roles);
         })
       );
   }

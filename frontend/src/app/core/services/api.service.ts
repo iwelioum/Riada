@@ -6,14 +6,20 @@ import { environment } from '../../../environments/environment';
 import {
   AccessCheckRequest,
   AccessCheckResponse,
+  AccessLogEntry,
   ClubFrequency,
   ClubDashboard,
   ClubSummary,
+  Course,
   CreateMaintenanceTicketPayload,
   CreateContractPayload,
+  CreateEmployeePayload,
   CreateMemberPayload,
   ContractLifecycleResponse,
+  EmployeeDetail,
+  EmployeeSummary,
   EquipmentItem,
+  GenerateInvoiceResponse,
   GenerateInvoicePayload,
   Guest,
   InvoiceDetail,
@@ -22,11 +28,13 @@ import {
   OptionPopularity,
   PagedResponse,
   RecordPaymentPayload,
+  RecordPaymentResponse,
   RiskScore,
   SystemHealth,
   Session,
   SubscriptionPlan,
   SubscriptionPlanOption,
+  UpdateEmployeePayload,
   UpdateMemberPayload,
   UpdateTicketStatusPayload
 } from '../models/api-models';
@@ -67,6 +75,7 @@ export class ApiService {
       primaryGoal: dto.primaryGoal ?? dto.PrimaryGoal,
       gdprConsentAt: dto.gdprConsentAt ?? dto.GdprConsentAt,
       marketingConsent: dto.marketingConsent ?? dto.MarketingConsent,
+      medicalCertificateProvided: dto.medicalCertificateProvided ?? dto.MedicalCertificateProvided ?? false,
       contracts: (dto.contracts ?? dto.Contracts ?? []).map((c: any) => ({
         id: c.id ?? c.Id,
         planName: c.planName ?? c.PlanName,
@@ -112,6 +121,18 @@ export class ApiService {
         paymentMethod: payment.paymentMethod ?? payment.PaymentMethod ?? 'Unknown',
         transactionReference: payment.transactionReference ?? payment.TransactionReference
       }))
+    };
+  }
+
+  private toRecordPaymentResponse(dto: any): RecordPaymentResponse {
+    return {
+      id: dto.id ?? dto.Id ?? 0,
+      invoiceId: dto.invoiceId ?? dto.InvoiceId ?? 0,
+      amount: dto.amount ?? dto.Amount ?? 0,
+      paymentMethod: dto.paymentMethod ?? dto.PaymentMethod ?? '',
+      transactionReference: dto.transactionReference ?? dto.TransactionReference ?? null,
+      paidAt: dto.paidAt ?? dto.PaidAt ?? '',
+      status: dto.status ?? dto.Status ?? ''
     };
   }
 
@@ -267,23 +288,85 @@ export class ApiService {
   }
 
   // Courses / Sessions
+  getCourses(): Observable<Course[]> {
+    return this.http.get<any>(`${this.apiUrl}/Courses`).pipe(
+      map((response) =>
+        this.extractCourseItems(response)
+          .filter((item) => !!item && typeof item === 'object')
+          .map((item) => this.toCourse(item))
+      )
+    );
+  }
+
+  private extractCourseItems(response: any): any[] {
+    if (Array.isArray(response)) {
+      return response;
+    }
+
+    const candidates = [
+      response?.items,
+      response?.Items,
+      response?.courses,
+      response?.Courses,
+      response?.data,
+      response?.Data
+    ];
+
+    const firstArray = candidates.find((candidate) => Array.isArray(candidate));
+    return Array.isArray(firstArray) ? firstArray : [];
+  }
+
+  private toCourse(dto: any): Course {
+    const id = Number(dto.id ?? dto.Id ?? 0);
+    const durationMinutes = Number(dto.durationMinutes ?? dto.DurationMinutes ?? 0);
+    const maxCapacity = Number(dto.maxCapacity ?? dto.MaxCapacity ?? 0);
+
+    const estimatedCaloriesRaw = dto.estimatedCalories ?? dto.EstimatedCalories;
+    const estimatedCalories = estimatedCaloriesRaw === null || estimatedCaloriesRaw === undefined
+      ? null
+      : Number(estimatedCaloriesRaw);
+
+    return {
+      id: Number.isFinite(id) ? id : 0,
+      courseName: dto.courseName ?? dto.CourseName ?? dto.name ?? dto.Name ?? 'Unnamed course',
+      description: dto.description ?? dto.Description ?? null,
+      difficultyLevel: dto.difficultyLevel ?? dto.DifficultyLevel ?? dto.level ?? dto.Level ?? 'Unknown',
+      durationMinutes: Number.isFinite(durationMinutes) ? durationMinutes : 0,
+      maxCapacity: Number.isFinite(maxCapacity) ? maxCapacity : 0,
+      estimatedCalories: typeof estimatedCalories === 'number' && Number.isFinite(estimatedCalories)
+        ? estimatedCalories
+        : null,
+      activityType: dto.activityType ?? dto.ActivityType ?? null
+    };
+  }
+
+  getSessionById(sessionId: number): Observable<Session> {
+    return this.http.get<any>(`${this.apiUrl}/Courses/sessions/${sessionId}`).pipe(
+      map((s) => this.toSession(s))
+    );
+  }
+
   getUpcomingSessions(clubId: number, days = 14): Observable<Session[]> {
     const params = new HttpParams().set('clubId', clubId).set('days', days);
     return this.http.get<any[]>(`${this.apiUrl}/Courses/sessions`, { params }).pipe(
-      map((sessions) =>
-        (sessions ?? []).map((s) => ({
-          id: s.id ?? s.Id,
-          courseName: s.courseName ?? s.CourseName,
-          instructorName: s.instructorName ?? s.InstructorName,
-          clubName: s.clubName ?? s.ClubName,
-          startsAt: s.startsAt ?? s.StartsAt,
-          durationMinutes: s.durationMinutes ?? s.DurationMinutes,
-          enrolledCount: s.enrolledCount ?? s.EnrolledCount,
-          maxCapacity: s.maxCapacity ?? s.MaxCapacity,
-          occupancyPercent: s.occupancyPercent ?? s.OccupancyPercent
-        }))
-      )
+      map((sessions) => (sessions ?? []).map((s) => this.toSession(s)))
     );
+  }
+
+  private toSession(s: any): Session {
+    return {
+      id: s.id ?? s.Id,
+      courseId: s.courseId ?? s.CourseId,
+      courseName: s.courseName ?? s.CourseName,
+      activityType: s.activityType ?? s.ActivityType,
+      instructorName: s.instructorName ?? s.InstructorName,
+      clubName: s.clubName ?? s.ClubName,
+      startsAt: s.startsAt ?? s.StartsAt,
+      durationMinutes: s.durationMinutes ?? s.DurationMinutes,
+      enrolledCount: s.enrolledCount ?? s.EnrolledCount,
+      maxCapacity: s.maxCapacity ?? s.MaxCapacity,
+      occupancyPercent: s.occupancyPercent ?? s.OccupancyPercent
+    };
   }
 
   bookSession(sessionId: number, memberId: number): Observable<{ message: string }> {
@@ -299,8 +382,10 @@ export class ApiService {
   }
 
   // Billing
-  generateMonthlyInvoice(payload: GenerateInvoicePayload): Observable<{ message: string }> {
-    return this.http.post<any>(`${this.apiUrl}/Billing/generate`, payload).pipe(
+  generateMonthlyInvoice(payload: GenerateInvoicePayload): Observable<GenerateInvoiceResponse> {
+    return this.http.post<any>(`${this.apiUrl}/Billing/generate`, {
+      contractId: payload.contractId
+    }).pipe(
       map((r) => ({ message: r.message ?? r.Message ?? 'Invoice generated' }))
     );
   }
@@ -311,8 +396,16 @@ export class ApiService {
     );
   }
 
-  recordPayment(payload: RecordPaymentPayload): Observable<any> {
-    return this.http.post<any>(`${this.apiUrl}/Billing/payments`, payload);
+  recordPayment(payload: RecordPaymentPayload): Observable<RecordPaymentResponse> {
+    return this.http.post<any>(`${this.apiUrl}/Billing/payments`, {
+      invoiceId: payload.invoiceId,
+      amount: payload.amount,
+      paymentMethod: payload.paymentMethod,
+      transactionReference: payload.transactionReference,
+      errorCode: payload.errorCode
+    }).pipe(
+      map((dto) => this.toRecordPaymentResponse(dto))
+    );
   }
 
   // Equipment
@@ -460,6 +553,88 @@ export class ApiService {
     return this.http.post<any>(`${this.apiUrl}/Guests/${id}/ban`, {}).pipe(
       map((r) => ({ message: r.message ?? r.Message ?? 'Guest banned successfully' }))
     );
+  }
+
+  // Employees
+  getEmployees(options?: { page?: number; pageSize?: number; clubId?: number; search?: string }): Observable<PagedResponse<EmployeeSummary>> {
+    let params = new HttpParams();
+    if (options?.page) params = params.set('page', options.page);
+    if (options?.pageSize) params = params.set('pageSize', options.pageSize);
+    if (options?.clubId) params = params.set('clubId', options.clubId);
+    if (options?.search) params = params.set('search', options.search);
+
+    return this.http.get<PagedResponse<any>>(`${this.apiUrl}/Employees`, { params }).pipe(
+      map((response) => {
+        const rawItems = (response as any).items ?? (response as any).Items ?? [];
+        return {
+          items: rawItems.map((e: any) => this.toEmployeeSummary(e)),
+          totalCount: (response as any).totalCount ?? rawItems.length,
+          page: (response as any).page ?? 1,
+          pageSize: (response as any).pageSize ?? rawItems.length,
+          totalPages: (response as any).totalPages ?? 1,
+          hasNext: (response as any).hasNext ?? false,
+          hasPrevious: (response as any).hasPrevious ?? false
+        };
+      })
+    );
+  }
+
+  getEmployeeDetail(id: number): Observable<EmployeeDetail> {
+    return this.http.get<any>(`${this.apiUrl}/Employees/${id}`).pipe(
+      map((dto) => this.toEmployeeDetail(dto))
+    );
+  }
+
+  createEmployee(payload: CreateEmployeePayload): Observable<EmployeeDetail> {
+    return this.http.post<any>(`${this.apiUrl}/Employees`, payload).pipe(
+      map((dto) => this.toEmployeeDetail(dto))
+    );
+  }
+
+  updateEmployee(id: number, payload: UpdateEmployeePayload): Observable<EmployeeDetail> {
+    return this.http.put<any>(`${this.apiUrl}/Employees/${id}`, payload).pipe(
+      map((dto) => this.toEmployeeDetail(dto))
+    );
+  }
+
+  // Access Log
+  getAccessLog(limit = 50): Observable<AccessLogEntry[]> {
+    const params = new HttpParams().set('limit', limit);
+    return this.http.get<any[]>(`${this.apiUrl}/Access/log`, { params }).pipe(
+      map((rows) => (rows ?? []).map((r: any) => ({
+        id: r.id ?? r.Id ?? 0,
+        isGuest: r.isGuest ?? r.IsGuest ?? false,
+        personId: r.personId ?? r.PersonId ?? 0,
+        personName: r.personName ?? r.PersonName ?? 'Unknown',
+        clubId: r.clubId ?? r.ClubId ?? 0,
+        clubName: r.clubName ?? r.ClubName ?? 'Unknown',
+        accessedAt: r.accessedAt ?? r.AccessedAt ?? '',
+        accessStatus: r.accessStatus ?? r.AccessStatus ?? 'unknown',
+        denialReason: r.denialReason ?? r.DenialReason ?? null
+      })))
+    );
+  }
+
+  private toEmployeeSummary(dto: any): EmployeeSummary {
+    return {
+      id: dto.id ?? dto.Id,
+      lastName: dto.lastName ?? dto.LastName ?? '',
+      firstName: dto.firstName ?? dto.FirstName ?? '',
+      email: dto.email ?? dto.Email ?? '',
+      role: dto.role ?? dto.Role ?? '',
+      clubId: dto.clubId ?? dto.ClubId ?? 0,
+      clubName: dto.clubName ?? dto.ClubName ?? '',
+      hiredOn: dto.hiredOn ?? dto.HiredOn ?? ''
+    };
+  }
+
+  private toEmployeeDetail(dto: any): EmployeeDetail {
+    return {
+      ...this.toEmployeeSummary(dto),
+      monthlySalary: dto.monthlySalary ?? dto.MonthlySalary ?? null,
+      qualifications: dto.qualifications ?? dto.Qualifications ?? null,
+      createdAt: dto.createdAt ?? dto.CreatedAt ?? ''
+    };
   }
 
   // Health Check

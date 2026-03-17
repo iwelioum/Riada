@@ -13,4 +13,7 @@ public interface IAnalyticsService
 
     /// <summary>Calls sp_RunSystemHealthCheck</summary>
     Task<(bool IsHealthy, string Status, int TotalMembers, int ActiveContracts, int PendingInvoices)> RunSystemHealthCheckAsync(CancellationToken ct = default);
+
+    /// <summary>Returns recent access log entries (member and guest combined)</summary>
+    Task<IReadOnlyList<(long Id, bool IsGuest, uint PersonId, string PersonName, uint ClubId, string ClubName, DateTime AccessedAt, string AccessStatus, string? DenialReason)>> GetRecentAccessLogAsync(int limit = 50, CancellationToken ct = default);
 }

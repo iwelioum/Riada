@@ -11,6 +11,25 @@ namespace Riada.API.Controllers;
 [Authorize]
 public class CoursesController : ControllerBase
 {
+    [HttpGet]
+    public async Task<IActionResult> GetCourses(
+        [FromServices] GetCoursesUseCase useCase = default!,
+        CancellationToken ct = default)
+    {
+        var response = await useCase.ExecuteAsync(ct);
+        return Ok(response);
+    }
+
+    [HttpGet("sessions/{sessionId:int:min(1)}")]
+    public async Task<IActionResult> GetSessionById(
+        uint sessionId,
+        [FromServices] GetSessionByIdUseCase useCase = default!,
+        CancellationToken ct = default)
+    {
+        var response = await useCase.ExecuteAsync(sessionId, ct);
+        return response is null ? NotFound() : Ok(response);
+    }
+
     [HttpGet("sessions")]
     public async Task<IActionResult> GetUpcomingSessions(
         [FromQuery] uint clubId,
@@ -22,6 +41,18 @@ public class CoursesController : ControllerBase
         return Ok(response);
     }
 
+    [HttpGet("sessions/range")]
+    public async Task<IActionResult> GetSessionsByRange(
+        [FromQuery] uint clubId,
+        [FromQuery] DateTime from,
+        [FromQuery] DateTime to,
+        [FromServices] GetSessionsRangeUseCase useCase = default!,
+        CancellationToken ct = default)
+    {
+        var response = await useCase.ExecuteAsync(new GetSessionsRangeRequest(clubId, from, to), ct);
+        return Ok(response);
+    }
+
     [HttpPost("sessions/{sessionId:int}/book")]
     public async Task<IActionResult> BookSession(
         uint sessionId,
@@ -30,7 +61,7 @@ public class CoursesController : ControllerBase
         CancellationToken ct = default)
     {
         var result = await useCase.ExecuteAsync(request with { SessionId = sessionId }, ct);
-        return Ok(new { Message = result });
+        return Ok(result);
     }
 
     [HttpDelete("bookings/{memberId:int:min(1)}/{sessionId:int:min(1)}")]
@@ -40,7 +71,7 @@ public class CoursesController : ControllerBase
         [FromServices] CancelBookingUseCase useCase = default!,
         CancellationToken ct = default)
     {
-        await useCase.ExecuteAsync(memberId, sessionId, ct);
-        return Ok(new { Message = "Booking cancelled successfully" });
+        var result = await useCase.ExecuteAsync(memberId, sessionId, ct);
+        return Ok(result);
     }
 }

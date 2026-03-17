@@ -20,7 +20,9 @@ public class GetUpcomingSessionsUseCase
 
         return sessions.Select(s => new SessionResponse(
             s.Id,
+            s.CourseId,
             s.Course.CourseName,
+            s.Course.ActivityType?.ToString(),
             $"{s.Instructor.FirstName} {s.Instructor.LastName}",
             s.Club.Name,
             s.StartsAt,

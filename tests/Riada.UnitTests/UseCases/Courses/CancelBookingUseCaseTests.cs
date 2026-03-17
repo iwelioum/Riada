@@ -1,105 +1,120 @@
 using FluentAssertions;
 using Moq;
-using Xunit;
-using Riada.Domain.Interfaces.Repositories;
+using Riada.Application.UseCases.Courses;
 using Riada.Domain.Entities.CourseScheduling;
 using Riada.Domain.Enums;
+using Riada.Domain.Exceptions;
+using Riada.Domain.Interfaces.Repositories;
+using Xunit;
 
 namespace Riada.UnitTests.UseCases.Courses;
 
 public class CancelBookingUseCaseTests
 {
-    private readonly Mock<IBookingRepository> _bookingRepositoryMock;
+    private readonly Mock<IBookingRepository> _bookingRepositoryMock = new();
+    private readonly Mock<IClassSessionRepository> _sessionRepositoryMock = new();
 
-    public CancelBookingUseCaseTests()
-    {
-        _bookingRepositoryMock = new Mock<IBookingRepository>();
-    }
+    private CancelBookingUseCase CreateSut()
+        => new(_bookingRepositoryMock.Object, _sessionRepositoryMock.Object);
 
     [Fact]
-    public async Task CancelBooking_WithValidBooking_ShouldRemove()
+    public async Task ExecuteAsync_ShouldCancelBooking_WhenBookingIsConfirmed()
     {
         // Arrange
+        const uint memberId = 3;
+        const uint sessionId = 22;
         var booking = new Booking
         {
-            MemberId = 1,
-            SessionId = 100,
+            MemberId = memberId,
+            SessionId = sessionId,
             Status = BookingStatus.Confirmed,
-            BookedAt = DateTime.UtcNow.AddDays(-5)
+            BookedAt = DateTime.UtcNow.AddMinutes(-30)
         };
+        var sessionSnapshot = BuildSession(sessionId, enrolledCount: 4, maxCapacity: 12);
 
-        _bookingRepositoryMock
-            .Setup(r => r.Remove(booking));
+        _bookingRepositoryMock.Setup(r => r.GetByCompositeKeyAsync(memberId, sessionId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(booking);
+        _bookingRepositoryMock.Setup(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+        _sessionRepositoryMock.Setup(r => r.GetByIdWithDetailsAsync(sessionId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(sessionSnapshot);
+
+        var sut = CreateSut();
 
         // Act
-        _bookingRepositoryMock.Object.Remove(booking);
+        var result = await sut.ExecuteAsync(memberId, sessionId);
 
         // Assert
-        _bookingRepositoryMock.Verify(r => r.Remove(booking), Times.Once);
+        result.Action.Should().Be("cancelled");
+        result.BookingStatus.Should().Be(BookingStatus.Cancelled.ToString());
+        result.Message.Should().Be("Booking cancelled successfully.");
+        result.EnrolledCount.Should().Be(4);
+        result.MaxCapacity.Should().Be(12);
+
+        booking.Status.Should().Be(BookingStatus.Cancelled);
+        _bookingRepositoryMock.Verify(r => r.UpdateBooking(booking), Times.Once);
+        _bookingRepositoryMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task CancelBooking_WithNonExistentBooking_ShouldReturnNull()
+    public async Task ExecuteAsync_ShouldBeIdempotent_WhenBookingIsAlreadyCancelled()
     {
         // Arrange
-        _bookingRepositoryMock
-            .Setup(r => r.GetByIdAsync(999u, It.IsAny<CancellationToken>()))
+        const uint memberId = 8;
+        const uint sessionId = 44;
+        var booking = new Booking
+        {
+            MemberId = memberId,
+            SessionId = sessionId,
+            Status = BookingStatus.Cancelled,
+            BookedAt = DateTime.UtcNow.AddHours(-1)
+        };
+        var sessionSnapshot = BuildSession(sessionId, enrolledCount: 6, maxCapacity: 20);
+
+        _bookingRepositoryMock.Setup(r => r.GetByCompositeKeyAsync(memberId, sessionId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(booking);
+        _sessionRepositoryMock.Setup(r => r.GetByIdWithDetailsAsync(sessionId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(sessionSnapshot);
+
+        var sut = CreateSut();
+
+        // Act
+        var result = await sut.ExecuteAsync(memberId, sessionId);
+
+        // Assert
+        result.Action.Should().Be("already_cancelled");
+        result.BookingStatus.Should().Be(BookingStatus.Cancelled.ToString());
+        result.Message.Should().Be("Booking is already cancelled.");
+
+        _bookingRepositoryMock.Verify(r => r.UpdateBooking(It.IsAny<Booking>()), Times.Never);
+        _bookingRepositoryMock.Verify(r => r.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_ShouldThrowNotFound_WhenBookingDoesNotExist()
+    {
+        // Arrange
+        const uint memberId = 99;
+        const uint sessionId = 777;
+
+        _bookingRepositoryMock.Setup(r => r.GetByCompositeKeyAsync(memberId, sessionId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Booking?)null);
 
+        var sut = CreateSut();
+
         // Act
-        var result = await _bookingRepositoryMock.Object.GetByIdAsync(999u);
+        var action = () => sut.ExecuteAsync(memberId, sessionId);
 
         // Assert
-        result.Should().BeNull();
+        await action.Should().ThrowAsync<NotFoundException>()
+            .Where(ex => ex.Code == "NOT_FOUND");
     }
 
-    [Fact]
-    public async Task CancelBooking_WithZeroMemberId_ShouldFail()
-    {
-        // Arrange
-        uint memberId = 0;
-
-        // Act & Assert
-        memberId.Should().Be(0);
-    }
-
-    [Fact]
-    public async Task CancelBooking_WithZeroSessionId_ShouldFail()
-    {
-        // Arrange
-        uint sessionId = 0;
-
-        // Act & Assert
-        sessionId.Should().Be(0);
-    }
-
-    [Fact]
-    public async Task CancelBooking_WhenRepositoryFails_ShouldPropagate()
-    {
-        // Arrange
-        _bookingRepositoryMock
-            .Setup(r => r.GetByIdAsync(1u, It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new InvalidOperationException("Database connection failed"));
-
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _bookingRepositoryMock.Object.GetByIdAsync(1u));
-    }
-
-    [Fact]
-    public async Task CancelBooking_WithCancelledStatus_ShouldFail()
-    {
-        // Arrange
-        var booking = new Booking
+    private static ClassSession BuildSession(uint id, ushort enrolledCount, ushort maxCapacity)
+        => new()
         {
-            MemberId = 2,
-            SessionId = 101,
-            Status = BookingStatus.Cancelled,
-            BookedAt = DateTime.UtcNow.AddDays(-10)
+            Id = id,
+            EnrolledCount = enrolledCount,
+            Course = new Course { Id = 1, CourseName = "Yoga", MaxCapacity = maxCapacity }
         };
-
-        // Act & Assert
-        booking.Status.Should().Be(BookingStatus.Cancelled);
-    }
 }
-

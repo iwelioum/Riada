@@ -5,6 +5,7 @@ import { Injectable } from '@angular/core';
 })
 export class AuthSessionService {
   private readonly sessionStateStorageKey = 'riada.auth.sessionActive';
+  private readonly rolesStorageKey = 'riada.auth.roles';
 
   getAccessToken(): string | null {
     return null;
@@ -20,6 +21,22 @@ export class AuthSessionService {
 
   clearAccessToken(): void {
     localStorage.removeItem(this.sessionStateStorageKey);
+    localStorage.removeItem(this.rolesStorageKey);
+  }
+
+  setRoles(roles: string[]): void {
+    localStorage.setItem(this.rolesStorageKey, JSON.stringify(roles));
+  }
+
+  getRoles(): string[] {
+    const raw = localStorage.getItem(this.rolesStorageKey);
+    if (!raw) return [];
+    try {
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
   }
 
   hasActiveSession(): boolean {

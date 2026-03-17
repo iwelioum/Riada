@@ -23,9 +23,31 @@ public class ClassSessionRepository : GenericRepository<ClassSession>, IClassSes
             .ToListAsync(ct);
     }
 
+    public async Task<IReadOnlyList<ClassSession>> GetByClubAndRangeAsync(
+        uint clubId,
+        DateTime from,
+        DateTime to,
+        CancellationToken ct = default)
+    {
+        return await DbSet.AsNoTracking()
+            .Include(s => s.Course)
+            .Include(s => s.Instructor)
+            .Include(s => s.Club)
+            .Where(s => s.ClubId == clubId && s.StartsAt >= from && s.StartsAt <= to)
+            .OrderBy(s => s.StartsAt)
+            .ToListAsync(ct);
+    }
+
     public async Task<ClassSession?> GetWithBookingsAsync(uint sessionId, CancellationToken ct = default)
         => await DbSet
             .Include(s => s.Course)
             .Include(s => s.Bookings)
+            .FirstOrDefaultAsync(s => s.Id == sessionId, ct);
+
+    public async Task<ClassSession?> GetByIdWithDetailsAsync(uint sessionId, CancellationToken ct = default)
+        => await DbSet.AsNoTracking()
+            .Include(s => s.Course)
+            .Include(s => s.Instructor)
+            .Include(s => s.Club)
             .FirstOrDefaultAsync(s => s.Id == sessionId, ct);
 }
