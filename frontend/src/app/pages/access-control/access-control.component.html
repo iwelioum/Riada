@@ -35,6 +35,18 @@
       <div class="card">
         <div class="card-header">Member access</div>
         <div class="form-row">
+          <label>Member lookup (name/email)</label>
+          <input type="search" [ngModel]="memberLookupTerm" (ngModelChange)="onMemberLookupChange($event)" placeholder="Search member" />
+        </div>
+        <div class="loading" *ngIf="memberLookupLoading">Searching members...</div>
+        <div class="error-inline" *ngIf="memberLookupError">{{ memberLookupError }}</div>
+        <div class="lookup-results" *ngIf="memberLookupResults.length">
+          <button type="button" class="lookup-item" *ngFor="let member of memberLookupResults" (click)="selectMember(member)">
+            <span>{{ member.firstName }} {{ member.lastName }}</span>
+            <span class="text-muted">#{{ member.id }}</span>
+          </button>
+        </div>
+        <div class="form-row">
           <label>Member ID</label>
           <input type="number" [(ngModel)]="memberId" />
         </div>
@@ -52,8 +64,32 @@
       <div class="card">
         <div class="card-header">Guest access</div>
         <div class="form-row">
+          <label>Guest lookup (optional)</label>
+          <input type="search" [ngModel]="guestLookupTerm" (ngModelChange)="onGuestLookupChange($event)" placeholder="Search guest name/email/id" />
+        </div>
+        <div class="loading" *ngIf="guestLookupLoading">Loading guests...</div>
+        <div class="error-inline" *ngIf="guestLookupError">{{ guestLookupError }}</div>
+        <div class="lookup-results" *ngIf="guestLookupResults.length">
+          <button type="button" class="lookup-item" *ngFor="let guest of guestLookupResults" (click)="selectGuest(guest)">
+            <span>{{ guest.firstName }} {{ guest.lastName }}</span>
+            <span class="text-muted">#{{ guest.id }}</span>
+          </button>
+        </div>
+        <div class="form-row">
           <label>Guest ID</label>
           <input type="number" [(ngModel)]="guestId" />
+        </div>
+        <div class="form-row">
+          <label>Companion member lookup</label>
+          <input type="search" [ngModel]="companionLookupTerm" (ngModelChange)="onCompanionLookupChange($event)" placeholder="Search companion member" />
+        </div>
+        <div class="loading" *ngIf="companionLookupLoading">Searching members...</div>
+        <div class="error-inline" *ngIf="companionLookupError">{{ companionLookupError }}</div>
+        <div class="lookup-results" *ngIf="companionLookupResults.length">
+          <button type="button" class="lookup-item" *ngFor="let member of companionLookupResults" (click)="selectCompanionMember(member)">
+            <span>{{ member.firstName }} {{ member.lastName }}</span>
+            <span class="text-muted">#{{ member.id }}</span>
+          </button>
         </div>
         <div class="form-row">
           <label>Companion Member ID</label>

@@ -57,6 +57,41 @@
   margin-bottom: 12px;
 }
 
+.ticket-journal {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.journal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.65rem;
+}
+
+.journal-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.journal-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 0.55rem 0.65rem;
+  display: grid;
+  gap: 0.3rem;
+}
+
+.journal-main {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+}
+
 .equipment-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));

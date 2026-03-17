@@ -74,3 +74,20 @@
   display: flex;
   gap: 0.5rem;
 }
+
+.lookup-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.lookup-item {
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 8px;
+  padding: 0.4rem 0.55rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}

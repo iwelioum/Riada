@@ -4,7 +4,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
-import { Session } from '../../core/models/api-models';
+import { MemberSummary, Session } from '../../core/models/api-models';
 
 @Component({
   selector: 'app-class-details',
@@ -22,6 +22,11 @@ export class ClassDetailsComponent implements OnInit {
   actionError: string | null = null;
   actionInProgress: 'book' | 'cancel' | null = null;
   memberIdInput = '';
+  memberLookupTerm = '';
+  memberLookupLoading = false;
+  memberLookupError: string | null = null;
+  memberLookupResults: MemberSummary[] = [];
+  private memberLookupRequestId = 0;
 
   constructor(
     private readonly route: ActivatedRoute,
@@ -67,6 +72,50 @@ export class ClassDetailsComponent implements OnInit {
   bookSession(): void { this.runAction('book'); }
   cancelBooking(): void { this.runAction('cancel'); }
 
+  onMemberLookupChange(value: string): void {
+    this.memberLookupTerm = value;
+    this.memberLookupError = null;
+    const term = value.trim();
+
+    if (term.length < 2) {
+      this.memberLookupResults = [];
+      this.memberLookupLoading = false;
+      return;
+    }
+
+    const requestId = ++this.memberLookupRequestId;
+    this.memberLookupLoading = true;
+
+    this.api.getMembers({ page: 1, pageSize: 8, search: term }).subscribe({
+      next: (response) => {
+        if (requestId !== this.memberLookupRequestId) {
+          return;
+        }
+        this.memberLookupResults = response.items ?? [];
+      },
+      error: (error) => {
+        if (requestId !== this.memberLookupRequestId) {
+          return;
+        }
+        this.memberLookupResults = [];
+        this.memberLookupError = this.getErrorMessage(error, 'Unable to search members by name/email.');
+      },
+      complete: () => {
+        if (requestId !== this.memberLookupRequestId) {
+          return;
+        }
+        this.memberLookupLoading = false;
+      }
+    });
+  }
+
+  selectLookupMember(member: MemberSummary): void {
+    this.memberIdInput = String(member.id);
+    this.memberLookupTerm = `${member.firstName} ${member.lastName} (#${member.id})`;
+    this.memberLookupResults = [];
+    this.memberLookupError = null;
+  }
+
   private runAction(action: 'book' | 'cancel'): void {
     this.successMessage = null;
     this.actionError = null;
@@ -88,6 +137,8 @@ export class ClassDetailsComponent implements OnInit {
       next: (r) => {
         this.successMessage = r.message;
         this.memberIdInput = '';
+        this.memberLookupTerm = '';
+        this.memberLookupResults = [];
         this.actionInProgress = null;
         this.loadSession(true);
       },

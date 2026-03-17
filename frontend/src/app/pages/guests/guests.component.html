@@ -10,6 +10,9 @@
     <h3>Register guest</h3>
     <div class="error" *ngIf="formError">{{ formError }}</div>
     <div class="form-grid">
+      <label>Sponsor member lookup
+        <input type="search" [ngModel]="sponsorLookupTerm" (ngModelChange)="onSponsorLookupChange($event)" placeholder="Name or email">
+      </label>
       <label>Sponsor member ID
         <input type="number" [(ngModel)]="form.sponsorMemberId">
       </label>
@@ -25,6 +28,19 @@
       <label>Date of birth
         <input type="date" [(ngModel)]="form.dateOfBirth">
       </label>
+    </div>
+    <div class="loading" *ngIf="sponsorLookupLoading">Searching members...</div>
+    <div class="error" *ngIf="sponsorLookupError">{{ sponsorLookupError }}</div>
+    <div class="lookup-results" *ngIf="sponsorLookupResults.length">
+      <button
+        type="button"
+        class="lookup-item"
+        *ngFor="let member of sponsorLookupResults"
+        (click)="selectSponsor(member)"
+      >
+        <span>{{ member.firstName }} {{ member.lastName }}</span>
+        <span>#{{ member.id }}</span>
+      </button>
     </div>
     <button class="btn btn-primary" (click)="registerGuest()" [disabled]="submitting">
       {{ submitting ? 'Registering...' : 'Register' }}

@@ -20,6 +20,7 @@ export class SubscriptionsComponent implements OnInit {
   hasLoadedPlans = false;
   plansError: string | null = null;
   optionsError: string | null = null;
+  selectionNotice: string | null = null;
 
   constructor(private api: ApiService) {}
 
@@ -62,6 +63,12 @@ export class SubscriptionsComponent implements OnInit {
     }
 
     this.loadOptions(planId);
+  }
+
+  confirmPlanSelection(plan: SubscriptionPlan, event?: Event): void {
+    event?.stopPropagation();
+    this.selectPlan(plan.id);
+    this.selectionNotice = `Plan "${plan.planName}" selected. Review add-on options below before continuing.`;
   }
 
   refreshSelectedPlanOptions() {

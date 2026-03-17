@@ -228,7 +228,7 @@ export class BillingComponent {
       )
       .subscribe({
         next: (response) => {
-          const generatedInvoiceId = this.extractGeneratedInvoiceId(response.message);
+          const generatedInvoiceId = this.extractGeneratedInvoiceId(response);
           if (generatedInvoiceId) {
             this.invoiceIdInput = generatedInvoiceId;
             this.successMessage = `Invoice generated successfully. Loading invoice #${generatedInvoiceId}.`;
@@ -236,7 +236,8 @@ export class BillingComponent {
             return;
           }
 
-          this.successMessage = 'Invoice generated successfully. Load invoice details using the invoice ID.';
+          this.successMessage =
+            'Invoice generated successfully. Could not detect invoice ID automatically; paste the invoice ID and run step 2.';
         },
         error: (error) => {
           this.generateError = this.toApiErrorMessage(error, 'generate-invoice');
@@ -406,14 +407,35 @@ export class BillingComponent {
     return Number.isInteger(numericValue) && numericValue > 0 ? numericValue : null;
   }
 
-  private extractGeneratedInvoiceId(message: string): number | null {
-    const match = /id\s*=\s*(\d+)/i.exec(message);
-    if (!match) {
+  private extractGeneratedInvoiceId(response: { message?: string; invoiceId?: number | null }): number | null {
+    if (response.invoiceId && Number.isInteger(response.invoiceId) && response.invoiceId > 0) {
+      return response.invoiceId;
+    }
+
+    const message = typeof response.message === 'string' ? response.message : '';
+    if (!message.trim()) {
       return null;
     }
 
-    const value = Number(match[1]);
-    return Number.isInteger(value) && value > 0 ? value : null;
+    const patterns = [
+      /invoice(?:\s+id|\s+number)?\s*[:=#]?\s*(\d{1,12})/i,
+      /generated(?:\s+\w+)*\s+(\d{1,12})/i,
+      /\bid\s*[:=#]\s*(\d{1,12})/i
+    ];
+
+    for (const pattern of patterns) {
+      const match = pattern.exec(message);
+      if (!match) {
+        continue;
+      }
+
+      const value = Number(match[1]);
+      if (Number.isInteger(value) && value > 0) {
+        return value;
+      }
+    }
+
+    return null;
   }
 
   private toApiErrorMessage(error: unknown, operation: 'load-invoice' | 'generate-invoice' | 'record-payment'): string {

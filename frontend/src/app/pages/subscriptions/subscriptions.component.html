@@ -20,9 +20,12 @@
         <li>Limited access: {{ plan.limitedClubAccess ? 'Yes' : 'No' }}</li>
         <li>Duo pass: {{ plan.duoPassAllowed ? 'Yes' : 'No' }}</li>
       </ul>
-      <button class="btn btn-primary" type="button">Select plan</button>
+      <button class="btn btn-primary" type="button" (click)="confirmPlanSelection(plan, $event)">
+        {{ selectedPlanId === plan.id ? 'Selected' : 'Select plan' }}
+      </button>
     </div>
   </div>
+  <div class="success" *ngIf="selectionNotice">{{ selectionNotice }}</div>
   <div class="empty-state" *ngIf="!loadingPlans && hasLoadedPlans && !plans.length && !plansError">No subscription plans available.</div>
 
   <div class="options" *ngIf="selectedPlanId">

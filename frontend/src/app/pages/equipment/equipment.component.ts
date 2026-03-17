@@ -5,6 +5,16 @@ import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
 import { ClubSummary, Equipment } from '../../core/models/api-models';
 
+interface TicketJournalEntry {
+  localId: string;
+  equipmentId: number;
+  equipmentName: string;
+  priority: string;
+  description: string;
+  createdAt: string;
+  backendTicketId?: number | null;
+}
+
 @Component({
   selector: 'app-equipment',
   standalone: true,
@@ -24,10 +34,14 @@ export class EquipmentComponent implements OnInit {
   creatingTicketId: number | null = null;
   errorMessage: string | null = null;
   successMessage: string | null = null;
+  ticketJournal: TicketJournalEntry[] = [];
+  private readonly ticketJournalLimit = 20;
+  private readonly ticketJournalStorageKey = 'riada.equipment.ticket-journal.v1';
 
   constructor(private apiService: ApiService) {}
 
   ngOnInit() {
+    this.restoreTicketJournal();
     this.loadClubs();
     this.loadEquipment();
   }
@@ -116,8 +130,9 @@ export class EquipmentComponent implements OnInit {
     this.creatingTicketId = equipmentId;
     const ticket = { equipmentId, priority: this.ticketPriority, description };
     this.apiService.createMaintenanceTicket(ticket).subscribe({
-      next: () => {
+      next: (response) => {
         this.successMessage = `Maintenance ticket created for ${equipmentItem.name}.`;
+        this.pushTicketJournalEntry(equipmentItem, description, response);
         this.ticketDescriptions[equipmentId] = '';
         this.creatingTicketId = null;
         this.loadEquipment();
@@ -150,6 +165,14 @@ export class EquipmentComponent implements OnInit {
     return 'No equipment registered yet.';
   }
 
+  get recentTicketJournal(): TicketJournalEntry[] {
+    return this.ticketJournal.slice(0, 8);
+  }
+
+  trackByTicketLocalId(_index: number, entry: TicketJournalEntry): string {
+    return entry.localId;
+  }
+
   private getErrorMessage(error: unknown, fallback: string): string {
     if (error instanceof HttpErrorResponse) {
       if (error.status === 401) {
@@ -166,5 +189,76 @@ export class EquipmentComponent implements OnInit {
     }
 
     return fallback;
+  }
+
+  private pushTicketJournalEntry(equipment: Equipment, description: string, response: unknown): void {
+    const backendTicketId = this.extractTicketId(response);
+    const entry: TicketJournalEntry = {
+      localId: `${equipment.id}-${Date.now()}`,
+      equipmentId: equipment.id,
+      equipmentName: equipment.name,
+      priority: this.ticketPriority,
+      description,
+      createdAt: new Date().toISOString(),
+      backendTicketId
+    };
+
+    this.ticketJournal = [entry, ...this.ticketJournal].slice(0, this.ticketJournalLimit);
+    localStorage.setItem(this.ticketJournalStorageKey, JSON.stringify(this.ticketJournal));
+  }
+
+  private restoreTicketJournal(): void {
+    const raw = localStorage.getItem(this.ticketJournalStorageKey);
+    if (!raw) {
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) {
+        throw new Error('Invalid ticket journal format.');
+      }
+
+      this.ticketJournal = parsed.filter((entry: unknown): entry is TicketJournalEntry => this.isTicketJournalEntry(entry)).slice(0, this.ticketJournalLimit);
+    } catch (error) {
+      console.warn('Failed to restore equipment ticket journal.', error);
+      localStorage.removeItem(this.ticketJournalStorageKey);
+      this.ticketJournal = [];
+    }
+  }
+
+  private extractTicketId(response: unknown): number | null {
+    if (!response || typeof response !== 'object') {
+      return null;
+    }
+
+    const payload = response as Record<string, unknown>;
+    const candidates = [payload['ticketId'], payload['ticketID'], payload['TicketId'], payload['id']];
+    for (const candidate of candidates) {
+      if (typeof candidate === 'number' && Number.isFinite(candidate)) {
+        return candidate;
+      }
+      if (typeof candidate === 'string' && /^\d+$/.test(candidate.trim())) {
+        return Number(candidate);
+      }
+    }
+
+    return null;
+  }
+
+  private isTicketJournalEntry(entry: unknown): entry is TicketJournalEntry {
+    if (!entry || typeof entry !== 'object') {
+      return false;
+    }
+
+    const candidate = entry as Partial<TicketJournalEntry>;
+    return (
+      typeof candidate.localId === 'string' &&
+      typeof candidate.equipmentId === 'number' &&
+      typeof candidate.equipmentName === 'string' &&
+      typeof candidate.priority === 'string' &&
+      typeof candidate.description === 'string' &&
+      typeof candidate.createdAt === 'string'
+    );
   }
 }

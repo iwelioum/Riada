@@ -68,10 +68,13 @@ export class ReportsComponent implements OnInit {
   private recommendationStatusOverrides: Record<string, RecommendationStatus> = {};
   private reportRequestId = 0;
   private readonly reportCache = new Map<string, ReportSnapshot>();
+  private readonly maxCacheEntries = 8;
+  private readonly recommendationStorageKey = 'riada.reports.recommendation-status.v1';
 
   constructor(private api: ApiService) {}
 
   ngOnInit(): void {
+    this.restoreRecommendationStatuses();
     this.loadReports();
   }
 
@@ -143,6 +146,7 @@ export class ReportsComponent implements OnInit {
 
   setRecommendationStatus(recommendationId: string, status: RecommendationStatus): void {
     this.recommendationStatusOverrides[recommendationId] = status;
+    this.persistRecommendationStatuses();
     const action = this.recommendations.find((item) => item.id === recommendationId);
     if (action) {
       this.workflowNotice = `${action.title} marked as ${status}.`;
@@ -151,6 +155,7 @@ export class ReportsComponent implements OnInit {
 
   resetRecommendationWorkflow(): void {
     this.recommendationStatusOverrides = {};
+    this.persistRecommendationStatuses();
     this.workflowNotice = 'Recommendation workflow statuses were reset.';
   }
 
@@ -329,6 +334,8 @@ export class ReportsComponent implements OnInit {
     if (!isRefresh) {
       const cached = this.reportCache.get(cacheKey);
       if (cached) {
+        this.reportCache.delete(cacheKey);
+        this.reportCache.set(cacheKey, cached);
         this.applySnapshot(cached);
         this.partialWarning = cached.warning;
         this.error = !this.hasData ? 'No report data available for the selected window.' : null;
@@ -399,7 +406,7 @@ export class ReportsComponent implements OnInit {
           updatedAt: new Date().toISOString()
         };
 
-        this.reportCache.set(cacheKey, snapshot);
+        this.setCachedSnapshot(cacheKey, snapshot);
         this.applySnapshot(snapshot);
         this.partialWarning = snapshot.warning;
 
@@ -494,5 +501,49 @@ export class ReportsComponent implements OnInit {
         this.exportNotice = null;
       }
     }, 3600);
+  }
+
+  private setCachedSnapshot(cacheKey: string, snapshot: ReportSnapshot): void {
+    if (this.reportCache.has(cacheKey)) {
+      this.reportCache.delete(cacheKey);
+    }
+    this.reportCache.set(cacheKey, snapshot);
+
+    if (this.reportCache.size > this.maxCacheEntries) {
+      const oldestKey = this.reportCache.keys().next().value as string | undefined;
+      if (oldestKey) {
+        this.reportCache.delete(oldestKey);
+      }
+    }
+  }
+
+  private persistRecommendationStatuses(): void {
+    localStorage.setItem(this.recommendationStorageKey, JSON.stringify(this.recommendationStatusOverrides));
+  }
+
+  private restoreRecommendationStatuses(): void {
+    const raw = localStorage.getItem(this.recommendationStorageKey);
+    if (!raw) {
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const restored: Record<string, RecommendationStatus> = {};
+      Object.entries(parsed).forEach(([key, value]) => {
+        if (this.isRecommendationStatus(value)) {
+          restored[key] = value;
+        }
+      });
+      this.recommendationStatusOverrides = restored;
+    } catch (error) {
+      console.warn('Failed to parse persisted recommendation statuses.', error);
+      localStorage.removeItem(this.recommendationStorageKey);
+      this.workflowNotice = 'Saved recommendation statuses were invalid and have been reset.';
+    }
+  }
+
+  private isRecommendationStatus(value: unknown): value is RecommendationStatus {
+    return value === 'Pending' || value === 'Scheduled' || value === 'Completed';
   }
 }

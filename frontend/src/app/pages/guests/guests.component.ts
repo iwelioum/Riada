@@ -3,7 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
-import { Guest } from '../../core/models/api-models';
+import { Guest, MemberSummary } from '../../core/models/api-models';
 
 @Component({
   selector: 'app-guests',
@@ -24,6 +24,11 @@ export class GuestsComponent implements OnInit {
   successMessage: string | null = null;
   formError: string | null = null;
   form = { sponsorMemberId: null as number | null, firstName: '', lastName: '', email: '', dateOfBirth: '' };
+  sponsorLookupTerm = '';
+  sponsorLookupLoading = false;
+  sponsorLookupError: string | null = null;
+  sponsorLookupResults: MemberSummary[] = [];
+  private sponsorLookupRequestId = 0;
 
   constructor(private api: ApiService, private cdr: ChangeDetectorRef) {}
 
@@ -135,6 +140,53 @@ export class GuestsComponent implements OnInit {
     return guest.id;
   }
 
+  onSponsorLookupChange(value: string): void {
+    this.sponsorLookupTerm = value;
+    this.sponsorLookupError = null;
+    const term = value.trim();
+
+    if (term.length < 2) {
+      this.sponsorLookupResults = [];
+      this.sponsorLookupLoading = false;
+      this.cdr.markForCheck();
+      return;
+    }
+
+    const requestId = ++this.sponsorLookupRequestId;
+    this.sponsorLookupLoading = true;
+    this.cdr.markForCheck();
+
+    this.api.getMembers({ page: 1, pageSize: 8, search: term }).subscribe({
+      next: (response) => {
+        if (requestId !== this.sponsorLookupRequestId) {
+          return;
+        }
+        this.sponsorLookupResults = response.items ?? [];
+      },
+      error: (error) => {
+        if (requestId !== this.sponsorLookupRequestId) {
+          return;
+        }
+        this.sponsorLookupResults = [];
+        this.sponsorLookupError = this.getErrorMessage(error, 'Unable to search members.');
+      },
+      complete: () => {
+        if (requestId !== this.sponsorLookupRequestId) {
+          return;
+        }
+        this.sponsorLookupLoading = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  selectSponsor(member: MemberSummary): void {
+    this.form.sponsorMemberId = member.id;
+    this.sponsorLookupTerm = `${member.firstName} ${member.lastName} (#${member.id})`;
+    this.sponsorLookupResults = [];
+    this.sponsorLookupError = null;
+  }
+
   private validateGuestForm(): string | null {
     if (!this.form.sponsorMemberId || this.form.sponsorMemberId < 1) {
       return 'Sponsor member ID is required.';
@@ -166,6 +218,9 @@ export class GuestsComponent implements OnInit {
 
   private resetForm() {
     this.form = { sponsorMemberId: null, firstName: '', lastName: '', email: '', dateOfBirth: '' };
+    this.sponsorLookupTerm = '';
+    this.sponsorLookupError = null;
+    this.sponsorLookupResults = [];
   }
 
   private getErrorMessage(error: unknown, fallback: string): string {

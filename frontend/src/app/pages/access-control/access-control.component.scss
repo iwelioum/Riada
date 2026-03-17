@@ -86,6 +86,24 @@
   font-size: 13px;
 }
 
+.lookup-results {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 10px;
+}
+
+.lookup-item {
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background: #fff;
+  padding: 0.45rem 0.6rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
 // Tabs
 .tab-bar {
   display: flex;

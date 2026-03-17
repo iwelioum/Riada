@@ -25,6 +25,27 @@
   <div class="error" *ngIf="errorMessage">{{ errorMessage }}</div>
   <div class="success" *ngIf="successMessage">{{ successMessage }}</div>
   <div class="loading" *ngIf="loading">Loading equipment...</div>
+
+  <section class="ticket-journal" *ngIf="recentTicketJournal.length">
+    <div class="journal-header">
+      <h3>Recent maintenance tickets</h3>
+      <span class="text-muted">Latest {{ recentTicketJournal.length }}</span>
+    </div>
+    <div class="journal-list">
+      <div class="journal-item" *ngFor="let entry of recentTicketJournal; trackBy: trackByTicketLocalId">
+        <div class="journal-main">
+          <strong>{{ entry.equipmentName }}</strong>
+          <span class="text-muted">#{{ entry.equipmentId }}</span>
+          <span class="badge badge-info">{{ entry.priority }}</span>
+        </div>
+        <div class="text-muted">{{ entry.description }}</div>
+        <div class="text-muted">
+          {{ entry.createdAt | date:'short' }}
+          <span *ngIf="entry.backendTicketId"> · Ticket #{{ entry.backendTicketId }}</span>
+        </div>
+      </div>
+    </div>
+  </section>
   
   <div class="equipment-grid" *ngIf="!loading && equipment.length > 0">
     <div class="equipment-card" *ngFor="let item of equipment">

@@ -29,6 +29,29 @@
     <h3>Book or cancel booking</h3>
     <div class="booking-form">
       <label>
+        Search member
+        <input
+          type="search"
+          [ngModel]="memberLookupTerm"
+          (ngModelChange)="onMemberLookupChange($event)"
+          placeholder="Name or email"
+        />
+      </label>
+      <div class="text-muted" *ngIf="memberLookupLoading">Searching members...</div>
+      <div class="error" *ngIf="memberLookupError">{{ memberLookupError }}</div>
+      <div class="lookup-results" *ngIf="memberLookupResults.length">
+        <button
+          type="button"
+          class="lookup-item"
+          *ngFor="let member of memberLookupResults"
+          (click)="selectLookupMember(member)"
+        >
+          <span>{{ member.firstName }} {{ member.lastName }}</span>
+          <span class="text-muted">#{{ member.id }}</span>
+        </button>
+      </div>
+
+      <label>
         Member ID
         <input type="number" min="1" [(ngModel)]="memberIdInput" />
       </label>

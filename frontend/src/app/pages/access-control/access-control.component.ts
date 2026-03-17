@@ -3,7 +3,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../core/services/api.service';
-import { AccessCheckResponse, AccessLogEntry, ClubSummary } from '../../core/models/api-models';
+import { AccessCheckResponse, AccessLogEntry, ClubSummary, Guest, MemberSummary } from '../../core/models/api-models';
 
 type ActiveTab = 'check' | 'history';
 
@@ -23,6 +23,21 @@ export class AccessControlComponent implements OnInit {
   memberId: number | null = null;
   guestId: number | null = null;
   companionMemberId: number | null = null;
+  memberLookupTerm = '';
+  memberLookupLoading = false;
+  memberLookupError: string | null = null;
+  memberLookupResults: MemberSummary[] = [];
+  companionLookupTerm = '';
+  companionLookupLoading = false;
+  companionLookupError: string | null = null;
+  companionLookupResults: MemberSummary[] = [];
+  guestLookupTerm = '';
+  guestLookupLoading = false;
+  guestLookupError: string | null = null;
+  guestLookupResults: Guest[] = [];
+  private allGuests: Guest[] = [];
+  private memberLookupRequestId = 0;
+  private companionLookupRequestId = 0;
   memberResult?: AccessCheckResponse;
   guestResult?: AccessCheckResponse;
   loadingClubs = false;
@@ -164,6 +179,142 @@ export class AccessControlComponent implements OnInit {
   refreshLog(): void {
     this.logLoaded = false;
     this.loadLog();
+  }
+
+  onMemberLookupChange(value: string): void {
+    this.memberLookupTerm = value;
+    this.memberLookupError = null;
+    const term = value.trim();
+
+    if (term.length < 2) {
+      this.memberLookupResults = [];
+      this.memberLookupLoading = false;
+      return;
+    }
+
+    const requestId = ++this.memberLookupRequestId;
+    this.memberLookupLoading = true;
+
+    this.api.getMembers({ page: 1, pageSize: 8, search: term }).subscribe({
+      next: (response) => {
+        if (requestId !== this.memberLookupRequestId) {
+          return;
+        }
+        this.memberLookupResults = response.items ?? [];
+      },
+      error: (error) => {
+        if (requestId !== this.memberLookupRequestId) {
+          return;
+        }
+        this.memberLookupResults = [];
+        this.memberLookupError = this.getErrorMessage(error, 'Unable to search members.');
+      },
+      complete: () => {
+        if (requestId !== this.memberLookupRequestId) {
+          return;
+        }
+        this.memberLookupLoading = false;
+      }
+    });
+  }
+
+  selectMember(member: MemberSummary): void {
+    this.memberId = member.id;
+    this.memberLookupTerm = `${member.firstName} ${member.lastName} (#${member.id})`;
+    this.memberLookupResults = [];
+    this.memberLookupError = null;
+  }
+
+  onCompanionLookupChange(value: string): void {
+    this.companionLookupTerm = value;
+    this.companionLookupError = null;
+    const term = value.trim();
+
+    if (term.length < 2) {
+      this.companionLookupResults = [];
+      this.companionLookupLoading = false;
+      return;
+    }
+
+    const requestId = ++this.companionLookupRequestId;
+    this.companionLookupLoading = true;
+
+    this.api.getMembers({ page: 1, pageSize: 8, search: term }).subscribe({
+      next: (response) => {
+        if (requestId !== this.companionLookupRequestId) {
+          return;
+        }
+        this.companionLookupResults = response.items ?? [];
+      },
+      error: (error) => {
+        if (requestId !== this.companionLookupRequestId) {
+          return;
+        }
+        this.companionLookupResults = [];
+        this.companionLookupError = this.getErrorMessage(error, 'Unable to search companion member.');
+      },
+      complete: () => {
+        if (requestId !== this.companionLookupRequestId) {
+          return;
+        }
+        this.companionLookupLoading = false;
+      }
+    });
+  }
+
+  selectCompanionMember(member: MemberSummary): void {
+    this.companionMemberId = member.id;
+    this.companionLookupTerm = `${member.firstName} ${member.lastName} (#${member.id})`;
+    this.companionLookupResults = [];
+    this.companionLookupError = null;
+  }
+
+  onGuestLookupChange(value: string): void {
+    this.guestLookupTerm = value;
+    this.guestLookupError = null;
+    const term = value.trim().toLowerCase();
+
+    if (term.length < 2) {
+      this.guestLookupResults = [];
+      return;
+    }
+
+    if (!this.allGuests.length) {
+      this.guestLookupLoading = true;
+      this.api.listGuests().subscribe({
+        next: (guests) => {
+          this.allGuests = guests ?? [];
+          this.guestLookupResults = this.filterGuests(term);
+        },
+        error: (error) => {
+          this.guestLookupResults = [];
+          this.guestLookupError = this.getErrorMessage(error, 'Unable to load guest list for lookup.');
+        },
+        complete: () => {
+          this.guestLookupLoading = false;
+        }
+      });
+      return;
+    }
+
+    this.guestLookupResults = this.filterGuests(term);
+  }
+
+  selectGuest(guest: Guest): void {
+    this.guestId = guest.id;
+    this.guestLookupTerm = `${guest.firstName} ${guest.lastName} (#${guest.id})`;
+    this.guestLookupResults = [];
+    this.guestLookupError = null;
+  }
+
+  private filterGuests(term: string): Guest[] {
+    return this.allGuests
+      .filter((guest) =>
+        guest.id.toString().includes(term) ||
+        `${guest.firstName} ${guest.lastName}`.toLowerCase().includes(term) ||
+        (guest.email ?? '').toLowerCase().includes(term)
+      )
+      .slice(0, 8);
   }
 
   private getErrorMessage(error: unknown, fallback: string): string {
