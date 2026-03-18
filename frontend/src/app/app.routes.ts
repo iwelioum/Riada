@@ -1,138 +1,123 @@
 import { Routes } from '@angular/router';
 import { authGuard } from './core/guards/auth.guard';
 import { roleGuard } from './core/guards/role.guard';
+import { MainLayoutComponent } from './layout/main-layout.component';
 
 export const routes: Routes = [
   {
     path: 'login',
-    loadComponent: () => import('./pages/login/login.component').then((m) => m.LoginComponent)
+    loadComponent: () => import('./pages/login/login.component').then((m) => m.LoginComponent),
   },
   {
     path: '',
-    loadComponent: () => import('./layout/layout.component').then((m) => m.LayoutComponent),
+    component: MainLayoutComponent,
     canActivate: [authGuard],
     children: [
       { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+
+      // Dashboard
       {
         path: 'dashboard',
-        loadComponent: () => import('./pages/dashboard/dashboard.component').then((m) => m.DashboardComponent)
+        loadComponent: () => import('./pages/dashboard/dashboard-page.component').then((m) => m.DashboardPageComponent),
       },
+
+      // Membership
       {
         path: 'members',
-        loadComponent: () => import('./pages/members/members.component').then((m) => m.MembersComponent),
+        loadComponent: () => import('./pages/members/members-page.component').then((m) => m.MembersPageComponent),
         canActivate: [roleGuard],
-        data: { roles: ['admin', 'billing', 'portique'] }
+        data: { roles: ['Admin', 'Manager', 'Reception'] },
       },
       {
         path: 'members/:id',
         loadComponent: () => import('./pages/member-detail/member-detail.component').then((m) => m.MemberDetailComponent),
-        canActivate: [roleGuard],
-        data: { roles: ['admin', 'billing', 'portique'] }
       },
       {
-        path: 'statistics',
-        loadComponent: () => import('./pages/statistics/statistics.component').then((m) => m.StatisticsComponent),
+        path: 'contracts',
+        loadComponent: () => import('./pages/contracts/contracts-page.component').then((m) => m.ContractsPageComponent),
         canActivate: [roleGuard],
-        data: { roles: ['admin'] }
+        data: { roles: ['Admin', 'Manager'] },
       },
       {
-        path: 'reports',
-        loadComponent: () => import('./pages/reports/reports.component').then((m) => m.ReportsComponent),
-        canActivate: [roleGuard],
-        data: { roles: ['admin', 'billing'] }
-      },
-      {
-        path: 'exercises',
-        loadComponent: () => import('./pages/exercises/exercises.component').then((m) => m.ExercisesComponent),
-        canActivate: [roleGuard],
-        data: { roles: ['admin', 'coach'] }
-      },
-      {
-        path: 'schedule',
-        loadComponent: () => import('./pages/schedule/schedule.component').then((m) => m.ScheduleComponent),
-        canActivate: [roleGuard],
-        data: { roles: ['admin', 'coach', 'portique'] }
-      },
-      { path: 'classes', redirectTo: 'schedule', pathMatch: 'full' },
-      {
-        path: 'classes/:id',
-        loadComponent: () => import('./pages/class-details/class-details.component').then((m) => m.ClassDetailsComponent),
-        canActivate: [roleGuard],
-        data: { roles: ['admin', 'coach', 'portique'] }
-      },
-      {
-        path: 'trainers',
-        loadComponent: () => import('./pages/trainers/trainers.component').then((m) => m.TrainersComponent),
-        canActivate: [roleGuard],
-        data: { roles: ['admin', 'manager'] }
-      },
-      {
-        path: 'employees',
-        loadComponent: () => import('./pages/employees/employees.component').then((m) => m.EmployeesComponent),
-        canActivate: [roleGuard],
-        data: { roles: ['admin', 'manager'] }
-      },
-      {
-        path: 'messages',
-        loadComponent: () => import('./pages/messages/messages.component').then((m) => m.MessagesComponent),
-        canActivate: [roleGuard],
-        data: { roles: ['admin'] }
-      },
-      {
-        path: 'billing',
-        loadComponent: () => import('./pages/billing/billing.component').then((m) => m.BillingComponent),
-        canActivate: [roleGuard],
-        data: { roles: ['admin', 'billing'] }
-      },
-      {
-        path: 'equipment',
-        loadComponent: () => import('./pages/equipment/equipment.component').then((m) => m.EquipmentComponent),
-        canActivate: [roleGuard],
-        data: { roles: ['admin', 'manager'] }
-      },
-      {
-        path: 'access',
-        loadComponent: () => import('./pages/access-control/access-control.component').then((m) => m.AccessControlComponent),
-        canActivate: [roleGuard],
-        data: { roles: ['admin', 'portique'] }
+        path: 'contracts/:id',
+        loadComponent: () => import('./pages/contracts/contract-detail.component').then((m) => m.ContractDetailComponent),
       },
       {
         path: 'subscriptions',
         loadComponent: () => import('./pages/subscriptions/subscriptions.component').then((m) => m.SubscriptionsComponent),
-        canActivate: [roleGuard],
-        data: { roles: ['admin', 'billing'] }
+      },
+
+      // Operations
+      {
+        path: 'clubs',
+        loadComponent: () => import('./pages/clubs/clubs-page.component').then((m) => m.ClubsPageComponent),
+      },
+      {
+        path: 'courses',
+        loadComponent: () => import('./pages/courses/courses-page.component').then((m) => m.CoursesPageComponent),
+      },
+      {
+        path: 'schedule',
+        loadComponent: () => import('./pages/schedule/schedule.component').then((m) => m.ScheduleComponent),
+      },
+      {
+        path: 'access-control',
+        loadComponent: () => import('./pages/access-control/access-control.component').then((m) => m.AccessControlComponent),
       },
       {
         path: 'guests',
         loadComponent: () => import('./pages/guests/guests.component').then((m) => m.GuestsComponent),
-        canActivate: [roleGuard],
-        data: { roles: ['admin', 'portique'] }
       },
+
+      // Staff
+      {
+        path: 'employees',
+        loadComponent: () => import('./pages/employees/employees-page.component').then((m) => m.EmployeesPageComponent),
+      },
+      {
+        path: 'shifts',
+        loadComponent: () => import('./pages/shifts-schedule/shifts-schedule.component').then((m) => m.ShiftsScheduleComponent),
+      },
+      {
+        path: 'equipment',
+        loadComponent: () => import('./pages/equipment/equipment-page.component').then((m) => m.EquipmentPageComponent),
+      },
+
+      // Analytics
+      {
+        path: 'analytics/risk',
+        loadComponent: () => import('./pages/analytics/risk-analytics.component').then((m) => m.RiskAnalyticsComponent),
+      },
+      {
+        path: 'analytics/frequency',
+        loadComponent: () => import('./pages/analytics/frequency-analytics.component').then((m) => m.FrequencyAnalyticsComponent),
+      },
+      {
+        path: 'analytics/options',
+        loadComponent: () => import('./pages/analytics/options-analytics.component').then((m) => m.OptionsAnalyticsComponent),
+      },
+      {
+        path: 'analytics/health',
+        loadComponent: () => import('./pages/analytics/health-analytics.component').then((m) => m.HealthAnalyticsComponent),
+      },
+
+      // Billing
+      {
+        path: 'billing/invoices',
+        loadComponent: () => import('./pages/billing/billing-invoices-page.component').then((m) => m.BillingInvoicesPageComponent),
+      },
+      {
+        path: 'billing/invoices/:id',
+        loadComponent: () => import('./pages/billing/invoice-detail.component').then((m) => m.InvoiceDetailComponent),
+      },
+
+      // Settings
       {
         path: 'settings',
-        loadComponent: () => import('./pages/settings/settings.component').then((m) => m.SettingsComponent),
-        canActivate: [roleGuard],
-        data: { roles: ['admin'] }
+        loadComponent: () => import('./pages/settings/settings-page.component').then((m) => m.SettingsPageComponent),
       },
-      {
-        path: 'workout-tracker',
-        loadComponent: () => import('./pages/workout-tracker/workout-tracker.component').then((m) => m.WorkoutTrackerComponent),
-        canActivate: [roleGuard],
-        data: { roles: ['coach', 'admin'] }
-      },
-      {
-        path: 'meal-plan',
-        loadComponent: () => import('./pages/meal-plan/meal-plan.component').then((m) => m.MealPlanComponent),
-        canActivate: [roleGuard],
-        data: { roles: ['coach', 'admin'] }
-      },
-      {
-        path: 'meal-plan/:id',
-        loadComponent: () => import('./pages/meal-details/meal-details.component').then((m) => m.MealDetailsComponent),
-        canActivate: [roleGuard],
-        data: { roles: ['coach', 'admin'] }
-      },
-      { path: '**', redirectTo: 'dashboard' }
-    ]
-  }
+
+      { path: '**', redirectTo: 'dashboard' },
+    ],
+  },
 ];
