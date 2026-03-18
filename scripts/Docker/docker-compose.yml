@@ -19,6 +19,7 @@ services:
     networks:
       - riada-network
 
+  # Profile 'docker': API + MySQL fully containerized
   api:
     profiles:
       - docker
@@ -26,17 +27,18 @@ services:
       context: ../..
       dockerfile: scripts/Docker/Dockerfile
     environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ASPNETCORE_URLS: "http://+:5001"
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      ALLOW_DEV_BYPASS: "false"
       ConnectionStrings__RiadaDb: "Server=mysql;Port=3306;Database=riada_db;User=root;Password=;SslMode=Preferred;AllowPublicKeyRetrieval=True"
-      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
-      Jwt__SecretKey: ${JWT_SECRET_KEY}
     ports:
-      - "5275:5275"
-      - "5174:5174"
+      - "5001:5001"
     depends_on:
       mysql:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5174/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -45,6 +47,7 @@ services:
       - riada-network
     restart: unless-stopped
 
+  # Profile 'local': API in Docker, MySQL on host WampServer (port 3306)
   api-local:
     profiles:
       - local
@@ -52,14 +55,15 @@ services:
       context: ../..
       dockerfile: scripts/Docker/Dockerfile
     environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ASPNETCORE_URLS: "http://+:5001"
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      ALLOW_DEV_BYPASS: ${ALLOW_DEV_BYPASS:-false}
       ConnectionStrings__RiadaDb: "Server=host.docker.internal;Port=3306;Database=riada_db;User=root;Password=;SslMode=Preferred;AllowPublicKeyRetrieval=True"
-      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT}
-      Jwt__SecretKey: ${JWT_SECRET_KEY}
     ports:
-      - "5275:5275"
-      - "5174:5174"
+      - "5001:5001"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5174/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
       interval: 30s
       timeout: 10s
       retries: 5

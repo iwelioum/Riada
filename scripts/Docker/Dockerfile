@@ -29,8 +29,8 @@ RUN apt-get update \
   && addgroup --system riada \
   && adduser --system --ingroup riada riada
 
-EXPOSE 5275 5174
-ENV ASPNETCORE_URLS=https://+:5275;http://+:5174
+EXPOSE 5001
+ENV ASPNETCORE_URLS=http://+:5001
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENV DOTNET_EnableDiagnostics=0
 
@@ -39,8 +39,7 @@ RUN chown -R riada:riada /app
 
 USER riada
 
-# Health check endpoint
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
-  CMD curl -fsS http://localhost:5174/health || exit 1
+  CMD curl -fsS http://localhost:5001/health || exit 1
 
 ENTRYPOINT ["dotnet", "Riada.API.dll"]

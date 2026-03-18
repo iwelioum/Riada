@@ -12,3 +12,5 @@ frontend/dist/
 **/TestResults/
 *.user
 *.suo
+.env
+.env.local

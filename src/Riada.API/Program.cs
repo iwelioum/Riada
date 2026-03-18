@@ -18,7 +18,7 @@ using Riada.Application.UseCases.Analytics;
 using Riada.Infrastructure;
 using Riada.Infrastructure.BackgroundJobs;
 
-Env.Load();
+Env.TraversePath().Load();
 var builder = WebApplication.CreateBuilder(args);
 
 // ── Layer registration ──
