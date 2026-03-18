@@ -18,6 +18,11 @@ public class GetInvoiceDetailUseCase
 
         return new InvoiceDetailResponse(
             invoice.Id,
+            invoice.ContractId,
+            invoice.Contract?.MemberId,
+            invoice.Contract?.Member is null
+                ? null
+                : $"{invoice.Contract.Member.FirstName} {invoice.Contract.Member.LastName}",
             invoice.InvoiceNumber,
             invoice.IssuedOn,
             invoice.DueDate,

@@ -6,5 +6,7 @@ public record EquipmentResponse(
     string EquipmentType,
     string Status,
     uint ClubId,
-    int AcquisitionYear);
+    int AcquisitionYear,
+    string? Brand = null,
+    string? Model = null);
 

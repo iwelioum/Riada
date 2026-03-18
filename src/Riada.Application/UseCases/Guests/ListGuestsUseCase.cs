@@ -28,7 +28,8 @@ public class ListGuestsUseCase
             g.Status.ToString(), g.SponsorMemberId,
             g.SponsorMember is not null
                 ? $"{g.SponsorMember.FirstName} {g.SponsorMember.LastName}"
-                : null
+                : null,
+            g.Email
         )).ToList();
 
         return new PagedResponse<GuestResponse>(dtos, totalCount, page, pageSize);

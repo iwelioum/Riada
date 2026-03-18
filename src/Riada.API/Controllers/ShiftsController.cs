@@ -12,7 +12,7 @@ public class ShiftsController : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetWeek(
-        [FromQuery] uint clubId,
+        [FromQuery] uint? clubId,
         [FromQuery] DateOnly weekStart,
         [FromServices] GetWeekShiftsUseCase useCase = default!,
         CancellationToken ct = default)

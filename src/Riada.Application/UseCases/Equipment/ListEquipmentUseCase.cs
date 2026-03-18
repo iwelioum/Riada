@@ -40,6 +40,8 @@ public class ListEquipmentUseCase
             e.EquipmentType,
             e.Status.ToString(),
             e.ClubId,
-            e.AcquisitionYear)).ToList().AsReadOnly();
+            e.AcquisitionYear,
+            e.Brand,
+            e.Model)).ToList().AsReadOnly();
     }
 }

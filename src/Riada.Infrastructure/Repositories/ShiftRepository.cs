@@ -11,12 +11,19 @@ public class ShiftRepository : IShiftRepository
 
     public ShiftRepository(RiadaDbContext context) => _context = context;
 
-    public async Task<IReadOnlyList<Shift>> GetWeekAsync(uint clubId, DateOnly weekStart, CancellationToken ct = default)
+    public async Task<IReadOnlyList<Shift>> GetWeekAsync(uint? clubId, DateOnly weekStart, CancellationToken ct = default)
     {
         var weekEnd = weekStart.AddDays(7);
-        return await _context.Shifts.AsNoTracking()
+        var query = _context.Shifts.AsNoTracking()
             .Include(s => s.Employee)
-            .Where(s => s.ClubId == clubId && s.Date >= weekStart && s.Date < weekEnd)
+            .Where(s => s.Date >= weekStart && s.Date < weekEnd);
+
+        if (clubId.HasValue)
+        {
+            query = query.Where(s => s.ClubId == clubId.Value);
+        }
+
+        return await query
             .OrderBy(s => s.Date)
             .ThenBy(s => s.Employee.LastName)
             .ToListAsync(ct);

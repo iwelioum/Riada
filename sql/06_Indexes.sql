@@ -41,6 +41,8 @@ CALL sp_create_index_if_missing('access_log', 'idx_access_log_club_status_at', '
 CALL sp_create_index_if_missing('guest_access_log', 'idx_guest_access_log_club_status_at', '`club_id`,`access_status`,`accessed_at`');
 CALL sp_create_index_if_missing('class_sessions', 'idx_class_sessions_club_start', '`club_id`,`starts_at`');
 CALL sp_create_index_if_missing('maintenance_tickets', 'idx_maintenance_status_priority_reported', '`status`,`priority`,`reported_at`');
+CALL sp_create_index_if_missing('shifts', 'idx_shifts_employee_date', '`employee_id`,`date`');
+CALL sp_create_index_if_missing('shifts', 'idx_shifts_club_date', '`club_id`,`date`');
 
 DROP PROCEDURE IF EXISTS sp_create_index_if_missing;
 
@@ -64,7 +66,9 @@ WHERE table_schema = DATABASE()
       'idx_access_log_club_status_at',
       'idx_guest_access_log_club_status_at',
       'idx_class_sessions_club_start',
-      'idx_maintenance_status_priority_reported'
+      'idx_maintenance_status_priority_reported',
+      'idx_shifts_employee_date',
+      'idx_shifts_club_date'
   )
 GROUP BY table_name, index_name
 ORDER BY table_name, index_name;

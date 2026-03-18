@@ -8,4 +8,7 @@ public record InvoiceSummaryResponse(
     decimal AmountInclTax,
     decimal AmountPaid,
     decimal BalanceDue,
-    string Status);
+    string Status,
+    uint? ContractId,
+    uint? MemberId,
+    string? MemberName);

@@ -748,6 +748,17 @@ FROM contracts c
 JOIN subscription_plans sp ON sp.id = c.plan_id
 WHERE c.id = (SELECT contract_id FROM invoices WHERE id = @edge_issued_invoice_id);
 
+INSERT INTO shifts (employee_id, club_id, date, start_time, end_time, shift_type)
+VALUES
+(1, 1, DATE_ADD(CURDATE(), INTERVAL -1 DAY), '08:00:00', '16:00:00', 'morning'),
+(2, 1, DATE_ADD(CURDATE(), INTERVAL -1 DAY), '14:00:00', '22:00:00', 'evening'),
+(1, 1, CURDATE(), '08:00:00', '16:00:00', 'morning'),
+(2, 1, CURDATE(), '14:00:00', '22:00:00', 'evening'),
+(1, 1, DATE_ADD(CURDATE(), INTERVAL 1 DAY), '08:00:00', '16:00:00', 'morning'),
+(2, 1, DATE_ADD(CURDATE(), INTERVAL 1 DAY), '14:00:00', '22:00:00', 'evening'),
+(3, 2, CURDATE(), '09:00:00', '17:00:00', 'morning'),
+(4, 2, CURDATE(), '13:00:00', '21:00:00', 'afternoon');
+
 UPDATE contracts
 SET
     status = 'suspended',
@@ -779,5 +790,6 @@ UNION ALL SELECT 'equipment', COUNT(*) FROM equipment
 UNION ALL SELECT 'maintenance_tickets', COUNT(*) FROM maintenance_tickets
 UNION ALL SELECT 'guests', COUNT(*) FROM guests
 UNION ALL SELECT 'guest_access_log', COUNT(*) FROM guest_access_log
+UNION ALL SELECT 'shifts', COUNT(*) FROM shifts
 UNION ALL SELECT 'audit_gdpr', COUNT(*) FROM audit_gdpr
 ORDER BY table_name;

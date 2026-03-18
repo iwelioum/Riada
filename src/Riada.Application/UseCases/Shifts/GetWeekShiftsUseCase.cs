@@ -10,7 +10,7 @@ public class GetWeekShiftsUseCase
     public GetWeekShiftsUseCase(IShiftRepository shiftRepository)
         => _shiftRepository = shiftRepository;
 
-    public async Task<IReadOnlyList<ShiftResponse>> ExecuteAsync(uint clubId, DateOnly weekStart, CancellationToken ct = default)
+    public async Task<IReadOnlyList<ShiftResponse>> ExecuteAsync(uint? clubId, DateOnly weekStart, CancellationToken ct = default)
     {
         var shifts = await _shiftRepository.GetWeekAsync(clubId, weekStart, ct);
 

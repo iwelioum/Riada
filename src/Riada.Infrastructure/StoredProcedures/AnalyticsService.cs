@@ -20,16 +20,20 @@ public class AnalyticsService : IAnalyticsService
         await connection.OpenAsync(ct);
 
         const string sql = @"
+            WITH combined_access AS (
+                SELECT club_id, member_id as person_id, id FROM access_log 
+                WHERE access_status = 'granted' AND accessed_at BETWEEN @DateFrom AND @DateTo
+                UNION ALL
+                SELECT club_id, guest_id as person_id, id FROM guest_access_log 
+                WHERE access_status = 'granted' AND accessed_at BETWEEN @DateFrom AND @DateTo
+            )
             SELECT 
                 c.id AS ClubId,
                 c.name AS ClubName,
-                COUNT(DISTINCT a.member_id) AS VisitorCount,
-                CAST(COUNT(a.id) AS DECIMAL(10, 2)) / NULLIF(COUNT(DISTINCT a.member_id), 0) AS AverageVisitsPerMember
+                COUNT(DISTINCT ca.person_id) AS VisitorCount,
+                CAST(COUNT(ca.id) AS DECIMAL(10, 2)) / NULLIF(COUNT(DISTINCT ca.person_id), 0) AS AverageVisitsPerMember
             FROM clubs c
-            LEFT JOIN access_log a
-                ON a.club_id = c.id
-               AND a.access_status = 'granted'
-               AND a.accessed_at BETWEEN @DateFrom AND @DateTo
+            LEFT JOIN combined_access ca ON ca.club_id = c.id
             GROUP BY c.id, c.name
             ORDER BY VisitorCount DESC";
 

@@ -39,6 +39,6 @@ public class RegisterGuestUseCase
         return new GuestResponse(
             guest.Id, guest.LastName, guest.FirstName,
             guest.DateOfBirth, guest.Status.ToString(),
-            guest.SponsorMemberId, null);
+            guest.SponsorMemberId, null, guest.Email);
     }
 }

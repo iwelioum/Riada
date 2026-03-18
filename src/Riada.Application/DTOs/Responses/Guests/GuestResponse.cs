@@ -7,4 +7,5 @@ public record GuestResponse(
     DateOnly DateOfBirth,
     string Status,
     uint? SponsorMemberId,
-    string? SponsorName);
+    string? SponsorName,
+    string? Email = null);

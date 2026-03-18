@@ -1,7 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Riada.Application.DTOs.Requests.Billing;
+using Riada.Application.DTOs.Responses.Billing;
 using Riada.Application.UseCases.Billing;
+using Riada.Infrastructure.Persistence;
 
 namespace Riada.API.Controllers;
 
@@ -10,6 +13,36 @@ namespace Riada.API.Controllers;
 [Authorize(Policy = "BillingOps")]
 public class BillingController : ControllerBase
 {
+    [HttpGet("invoices")]
+    [ProducesResponseType(200)]
+    [ProducesResponseType(401)]
+    [ProducesResponseType(403)]
+    public async Task<IActionResult> ListInvoices(
+        [FromServices] RiadaDbContext context,
+        CancellationToken ct)
+    {
+        var invoices = await context.Invoices
+            .AsNoTracking()
+            .OrderByDescending(i => i.IssuedOn)
+            .Select(i => new InvoiceSummaryResponse(
+                i.Id,
+                i.InvoiceNumber,
+                i.IssuedOn,
+                i.DueDate,
+                i.AmountInclTax,
+                i.AmountPaid,
+                i.BalanceDue,
+                i.Status.ToString(),
+                i.ContractId,
+                i.Contract != null ? i.Contract.MemberId : null,
+                i.Contract != null && i.Contract.Member != null
+                    ? i.Contract.Member.FirstName + " " + i.Contract.Member.LastName
+                    : null))
+            .ToListAsync(ct);
+
+        return Ok(invoices);
+    }
+
     [HttpPost("generate")]
     [ProducesResponseType(200)]
     [ProducesResponseType(400)]

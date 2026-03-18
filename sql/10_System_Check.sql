@@ -15,7 +15,7 @@ SET @c_table_count := (
     WHERE table_schema = DATABASE()
       AND table_type = 'BASE TABLE'
 );
-INSERT INTO tmp_system_checks VALUES ('C01', 'base table count', IF(@c_table_count = 21, 'OK', 'FAIL'), CONCAT('tables=', @c_table_count));
+INSERT INTO tmp_system_checks VALUES ('C01', 'base table count', IF(@c_table_count = 22, 'OK', 'FAIL'), CONCAT('tables=', @c_table_count));
 
 SET @c_trigger_count := (
     SELECT COUNT(*)

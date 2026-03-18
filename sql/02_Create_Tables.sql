@@ -479,6 +479,30 @@ CREATE TABLE IF NOT EXISTS guest_access_log (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 
+CREATE TABLE IF NOT EXISTS shifts (
+    id           INT UNSIGNED    NOT NULL AUTO_INCREMENT,
+    employee_id  INT UNSIGNED    NOT NULL,
+    club_id      INT UNSIGNED    NOT NULL,
+    date         DATE            NOT NULL,
+    start_time   TIME            NOT NULL,
+    end_time     TIME            NOT NULL,
+    shift_type   ENUM('opening','morning','afternoon','evening','closing','custom')
+                                 NOT NULL DEFAULT 'custom',
+    created_at   DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (id),
+    CONSTRAINT fk_shifts_employee
+        FOREIGN KEY (employee_id) REFERENCES employees (id)
+        ON DELETE CASCADE ON UPDATE RESTRICT,
+    CONSTRAINT fk_shifts_club
+        FOREIGN KEY (club_id)     REFERENCES clubs (id)
+        ON DELETE CASCADE ON UPDATE RESTRICT,
+    CONSTRAINT chk_shifts_times
+        CHECK (end_time > start_time),
+    INDEX idx_shifts_employee_date (employee_id, date),
+    INDEX idx_shifts_club_date     (club_id, date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
 CREATE TABLE IF NOT EXISTS audit_gdpr (
     id              BIGINT UNSIGNED  NOT NULL AUTO_INCREMENT,
     member_id       INT UNSIGNED     NOT NULL,

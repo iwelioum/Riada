@@ -16,6 +16,8 @@ public class InvoiceRepository : GenericRepository<Invoice>, IInvoiceRepository
             .Include(i => i.Payments)
             .Include(i => i.Contract)
                 .ThenInclude(c => c!.Plan)
+            .Include(i => i.Contract)
+                .ThenInclude(c => c!.Member)
             .FirstOrDefaultAsync(i => i.Id == invoiceId, ct);
 
     public async Task<IReadOnlyList<Invoice>> GetByContractIdAsync(uint contractId, CancellationToken ct = default)

@@ -2,6 +2,9 @@ namespace Riada.Application.DTOs.Responses.Billing;
 
 public record InvoiceDetailResponse(
     uint Id,
+    uint? ContractId,
+    uint? MemberId,
+    string? MemberName,
     string InvoiceNumber,
     DateOnly IssuedOn,
     DateOnly DueDate,
