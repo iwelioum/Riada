@@ -34,7 +34,7 @@ cd scripts/Launch
 **Docker**
 ```bash
 cd scripts/Docker
-docker-compose up
+docker compose --env-file ../../.env --profile docker up --build
 ```
 
 👉 **Guide complet:** [`scripts/Launch/README.md`](scripts/Launch/README.md)
@@ -138,7 +138,10 @@ cd scripts/Launch
 
 # Docker
 cd scripts\Docker
-docker compose up --build
+docker compose --env-file ..\..\.env --profile docker up --build
+
+# Docker API only (MySQL local WampServer)
+docker compose --env-file ..\..\.env --profile local up --build
 
 # Tests des scripts de lancement
 cd scripts\Launch
@@ -312,7 +315,7 @@ cd scripts\Launch
 cd scripts/Launch && ./launch.sh run
 
 # Docker
-cd scripts\Docker && docker compose up --build
+cd scripts\Docker && docker compose --env-file ..\..\.env --profile docker up --build
 ```
 
 Puis ouvre:

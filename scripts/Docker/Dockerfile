@@ -7,9 +7,8 @@ COPY ["src/Riada.Domain/Riada.Domain.csproj", "src/Riada.Domain/"]
 COPY ["src/Riada.Application/Riada.Application.csproj", "src/Riada.Application/"]
 COPY ["src/Riada.Infrastructure/Riada.Infrastructure.csproj", "src/Riada.Infrastructure/"]
 COPY ["src/Riada.API/Riada.API.csproj", "src/Riada.API/"]
-COPY ["Riada.sln", "./"]
 
-RUN dotnet restore "Riada.sln" --nologo
+RUN dotnet restore "src/Riada.API/Riada.API.csproj" --nologo
 
 COPY . .
 RUN dotnet publish "src/Riada.API/Riada.API.csproj" \

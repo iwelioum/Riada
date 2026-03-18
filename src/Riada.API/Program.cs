@@ -2,6 +2,7 @@ using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using DotNetEnv;
 using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -17,6 +18,7 @@ using Riada.Application.UseCases.Analytics;
 using Riada.Infrastructure;
 using Riada.Infrastructure.BackgroundJobs;
 
+Env.Load();
 var builder = WebApplication.CreateBuilder(args);
 
 // ── Layer registration ──

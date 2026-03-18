@@ -506,6 +506,8 @@ function Invoke-Docker {
 
     $composeFile = [System.IO.Path]::GetFullPath((Join-Path $ScriptRoot '..\Docker\docker-compose.yml'))
     Require-File -Path $composeFile -Message "docker-compose.yml not found: $composeFile"
+    $envFile = [System.IO.Path]::GetFullPath((Join-Path $ScriptRoot '..\..\.env'))
+    Require-File -Path $envFile -Message ".env file not found: $envFile"
 
     if (-not (Test-ProgramExists -Program 'docker')) {
         Write-Error-Log 'Docker is not installed or not available in PATH.'
@@ -516,12 +518,12 @@ function Invoke-Docker {
     try {
         & docker compose version *> $null
         if ($LASTEXITCODE -eq 0) {
-            Write-Info 'Running docker compose up --build...'
-            & docker compose up --build
+            Write-Info 'Running docker compose --env-file ../../.env --profile docker up --build...'
+            & docker compose --env-file $envFile --profile docker up --build
         }
         elseif (Test-ProgramExists -Program 'docker-compose') {
-            Write-Info 'Running docker-compose up --build...'
-            & docker-compose up --build
+            Write-Info 'Running docker-compose --env-file ../../.env --profile docker up --build...'
+            & docker-compose --env-file $envFile --profile docker up --build
         }
         else {
             Write-Error-Log 'Neither "docker compose" nor "docker-compose" is available.'

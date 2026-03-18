@@ -272,17 +272,23 @@ health() {
 docker_up() {
   header "DOCKER"
   local compose_dir="$SCRIPT_DIR/../Docker"
+  local env_file="$SCRIPT_DIR/../../.env"
 
   if [[ ! -f "$compose_dir/docker-compose.yml" ]]; then
     log_error "docker-compose.yml not found in $compose_dir"
     exit 1
   fi
 
+  if [[ ! -f "$env_file" ]]; then
+    log_error ".env file not found: $env_file"
+    exit 1
+  fi
+
   cd "$compose_dir"
   if docker compose version >/dev/null 2>&1; then
-    docker compose up --build
+    docker compose --env-file "$env_file" --profile docker up --build
   elif command -v docker-compose >/dev/null 2>&1; then
-    docker-compose up --build
+    docker-compose --env-file "$env_file" --profile docker up --build
   else
     log_error "Neither docker compose nor docker-compose is available."
     exit 1

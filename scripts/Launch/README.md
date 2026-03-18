@@ -56,7 +56,7 @@ chmod +x launch.sh
 - `fullstack` - build backend then launch backend + frontend (reuses already-running API if detected)
 - `clean` - remove `bin` and `obj`
 - `health` - check `https://localhost:5275/health`
-- `docker` - run Docker compose from `scripts\Docker`
+- `docker` - run Docker compose from `scripts\Docker` with `--profile docker` and root `.env`
 - `help` - show command help
 
 ## Verify setup

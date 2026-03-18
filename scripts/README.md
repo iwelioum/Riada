@@ -63,7 +63,10 @@ chmod +x launch.sh
 
 ```powershell
 cd scripts\Docker
-docker compose up --build
+docker compose --env-file ..\..\.env --profile docker up --build
+
+# API only with local WampServer MySQL
+docker compose --env-file ..\..\.env --profile local up --build
 ```
 
 ## Validation
